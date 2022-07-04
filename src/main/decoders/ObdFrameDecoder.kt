@@ -2,9 +2,10 @@ package main.decoders
 
 import Event
 import OBDMessage
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 
-class ObdFrameDecoder(private val socketEventFlow: MutableStateFlow<Event<OBDMessage>>): Decoder(socketEventFlow) {
+class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>): Decoder(socketEventFlow) {
 
 
     override fun decode(bytes: ByteArray) {
