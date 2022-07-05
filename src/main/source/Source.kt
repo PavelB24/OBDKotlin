@@ -1,25 +1,24 @@
 package main.source
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.io.DataInputStream
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.*
 import java.net.Socket
 import java.nio.channels.SocketChannel
 
 class Source() : BaseSource() {
 
-    val inputByteFlow = MutableSharedFlow<ByteArray>()
+    override val workScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val outputByteFlow = MutableSharedFlow<ByteArray>()
+    private val _inputByteFlow = MutableSharedFlow<ByteArray>()
+    override val inputByteFlow: SharedFlow<ByteArray> = _inputByteFlow
 
+    override val outputByteFlow = MutableSharedFlow<ByteArray>()
+    private val _outputByteFlow: SharedFlow<ByteArray> = outputByteFlow
 
-    private var scope: CoroutineScope? = null
 
     constructor(inputStream: InputStream, outputStream: OutputStream) : this() {
         this.inputStream = inputStream
@@ -37,6 +36,10 @@ class Source() : BaseSource() {
         sourceMode = SourceMode.NONE_BLOCKING_SOCKET
     }
 
+    init {
+        startObserve()
+    }
+
     override var sourceMode = SourceMode.NONE
 
     private var socket: Socket? = null
@@ -48,52 +51,37 @@ class Source() : BaseSource() {
     private var outputStream: OutputStream? = null
 
     private fun startObserve() {
-        scope?.let {
-            it.launch {
-                inputByteFlow.onEach {
+        workScope.launch {
+                outputByteFlow.onEach {
                     when (sourceMode) {
-                        SourceMode.NONE_BLOCKING_SOCKET -> TODO()
-                        SourceMode.STREAM -> TODO()
-                        SourceMode.SOCKET -> {
-                            socket?.let {
-                                val buffer = DataInputStream(it.getInputStream())
-                                buffer.readAllBytes()
-                            }
-                        }
-                        SourceMode.NONE -> TODO()
+                        SourceMode.NONE_BLOCKING_SOCKET -> writeToNonBlockingSocket(it)
+                        SourceMode.STREAM -> writeToStream(it)
+                        SourceMode.SOCKET ->  writeToStream(it)
+                        SourceMode.NONE -> Unit
                     }
                 }.collect()
-                it.launch {
-                    outputByteFlow.onEach {
-                        when (sourceMode) {
-                            SourceMode.NONE_BLOCKING_SOCKET -> TODO()
-                            SourceMode.STREAM -> TODO()
-                            SourceMode.SOCKET -> {
-                            }
-                            SourceMode.NONE -> TODO()
-                        }
-                    }.collect()
-                }
             }
         }
-    }
 
     override fun addSource(inputStream: InputStream, outputStream: OutputStream) {
         this.inputStream = inputStream
         this.outputStream = outputStream
         resetOtherSources()
+        observeBlockingSorce()
     }
 
     override fun addSource(socket: Socket) {
         this.socket = socket
         sourceMode = SourceMode.SOCKET
         resetOtherSources()
+        observeBlockingSorce()
     }
 
     override fun addSource(socketNonBlocking: SocketChannel) {
         this.socketNonBlocking = socketNonBlocking
         sourceMode = SourceMode.NONE_BLOCKING_SOCKET
         resetOtherSources()
+        observeNonBlockingSource()
     }
 
     private fun resetOtherSources() {
@@ -116,7 +104,4 @@ class Source() : BaseSource() {
         }
     }
 
-    fun sendScope(commanderScope: CoroutineScope) {
-        this.scope = commanderScope
-    }
 }
