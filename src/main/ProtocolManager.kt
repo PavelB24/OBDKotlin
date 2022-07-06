@@ -4,21 +4,19 @@ import main.OnPositiveAnswerStrategy
 import main.WorkMode
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.jvm.Throws
 
 class ProtocolManager() {
 
-    var usersProtocolSet: Set<Protocol>? = null
-
     constructor(protocols: Set<Protocol>) : this() {
-        usersProtocolSet = protocols
+        usersProtocolSet.addAll(protocols)
     }
 
-    constructor(protocol: Protocol): this(){
-        selectedOneProto = protocol
+    constructor(protocol: Protocol) : this() {
+        usersProtocolSet.add(protocol)
     }
 
-    private var selectedOneProto: Protocol? = null
-
+    private var usersProtocolSet: MutableSet<Protocol> = mutableSetOf()
     private val _obdCommandFlow = MutableSharedFlow<String>()
     val obdCommandFlow: SharedFlow<String> = _obdCommandFlow
 
@@ -27,8 +25,10 @@ class ProtocolManager() {
         AtCommands.EchoOff, AtCommands.AllowLongMessages
     )
 
-    val standardSettingsSet2: Set<AtCommands>
-        get() = TODO("Not yet implemented")
+    private val canCommandsSet: Set<AtCommands> = setOf(
+        AtCommands.ResetAll, AtCommands.PrintingSpacesOff,
+        AtCommands.EchoOff, AtCommands.AllowLongMessages
+    )
 
 
     private val standardProtocolSet: Set<Protocol> = setOf(
@@ -36,7 +36,7 @@ class ProtocolManager() {
     )
 
     private val tryProtocolQueue = ConcurrentLinkedQueue<Protocol>()
-    private val settingsQueue = ConcurrentLinkedQueue<AtCommands>(standardSettingsSet)
+    private val settingsQueue = ConcurrentLinkedQueue<AtCommands>()
 
     //invoke this first time with WM idle when switch into proto
     suspend fun handlePositiveAnswer(mode: WorkMode, strategy: OnPositiveAnswerStrategy) {
@@ -67,11 +67,9 @@ class ProtocolManager() {
     }
 
     private suspend fun setProto() {
-        if (selectedOneProto != null) {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${selectedOneProto!!.hexOrdinal}")
-        } else if(tryProtocolQueue.isNotEmpty()){
+        if (tryProtocolQueue.isNotEmpty()) {
             _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${tryProtocolQueue.poll().hexOrdinal}")
-        } else{
+        } else {
             _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${Protocol.AUTOMATIC.hexOrdinal}")
         }
     }
@@ -99,24 +97,38 @@ class ProtocolManager() {
         sendNextSettings()
     }
 
-    suspend fun resetSettings(auto: Boolean = false) {
-        prepareOBD(auto)
+    suspend fun resetSettings(canMode: Boolean = false, auto: Boolean = false) {
+        checkMods(canMode, auto)
+        prepareOBD(canMode, auto)
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${settingsQueue.poll().command}")
+    }
+
+    @Throws(ModsConflictException::class)
+    private fun checkMods(canMode: Boolean , auto: Boolean) {
+        if(canMode && auto){
+            throw ModsConflictException()
+        }
     }
 
     private suspend fun sendNextSettings() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${settingsQueue.poll().command}")
     }
 
-    private fun prepareOBD(auto: Boolean) {
-        if (usersProtocolSet != null && !auto) {
-            tryProtocolQueue.addAll(usersProtocolSet!!)
-
+    private fun prepareOBD(canMode: Boolean, auto: Boolean) {
+        if (usersProtocolSet.isNotEmpty() && !auto && !canMode) {
+            tryProtocolQueue.addAll(usersProtocolSet)
+            settingsQueue.addAll(standardSettingsSet)
         } else if (auto) {
             tryProtocolQueue.add(Protocol.AUTOMATIC)
+            settingsQueue.addAll(standardSettingsSet)
+        } else if (canMode){
+            tryProtocolQueue.add(Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud)
+            settingsQueue.addAll(canCommandsSet)
         } else {
             tryProtocolQueue.addAll(standardProtocolSet)
+            settingsQueue.addAll(standardSettingsSet)
         }
+
     }
 
 

@@ -37,6 +37,8 @@ abstract class BusCommander( protoManager: ProtocolManager) {
 
     abstract fun tryProtos()
 
+    abstract fun switchToCanMode()
+
     abstract suspend fun resetSettings()
 
     abstract fun obdAutoAll()

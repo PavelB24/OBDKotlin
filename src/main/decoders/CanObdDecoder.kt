@@ -5,7 +5,7 @@ import OBDMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.nio.channels.SocketChannel
 
-class HeaderDecoder(private val socketEventFlow: MutableStateFlow<Event<OBDMessage?>>): Decoder(socketEventFlow){
+class CanObdDecoder(private val socketEventFlow: MutableStateFlow<Event<OBDMessage?>>): Decoder(socketEventFlow){
 
 
     override fun decode(bytes: ByteArray) {
