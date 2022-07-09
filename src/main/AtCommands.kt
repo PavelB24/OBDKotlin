@@ -2,7 +2,7 @@
 
 enum class AtCommands(val command: String) {
 
-    Repeat("<CR>"), //Repeat last command
+    Repeat(">"), //Repeat last command
     SetBaudRateDivisor("BRD"),
     Defaults("D"), //Set All to Defaults
     EchoOff("E0"), //Set Echo Off
@@ -62,7 +62,7 @@ enum class AtCommands(val command: String) {
     UseVarDLCOn("V1"),
     UseVarDLCOff("V0"),
 
-    CanExtAdr("CAE"), // Just CAE to turn off, use CAE hh
+    CanExtAdr("CAE"), // Just CAE to turn off, use CAE hh for turn on
     SetCanIdFilter("CF"), //hhh or hhhhhhhh
     FlowControlOn("CFC1"),
     FlowControlOff("CFC0"),

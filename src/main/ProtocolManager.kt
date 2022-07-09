@@ -1,9 +1,9 @@
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import main.ModsConflictException
 import main.OnPositiveAnswerStrategy
 import main.WorkMode
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
 
 class ProtocolManager() {
@@ -39,34 +39,17 @@ class ProtocolManager() {
     private val settingsQueue = ConcurrentLinkedQueue<AtCommands>()
 
     //invoke this first time with WM idle when switch into proto
-    suspend fun handlePositiveAnswer(mode: WorkMode, strategy: OnPositiveAnswerStrategy) {
-        when (strategy) {
-            OnPositiveAnswerStrategy.IDLE -> Unit //готов
-            OnPositiveAnswerStrategy.TRY -> if (mode == WorkMode.IDLE) tryNextProto() else setTriedProto() //готов
-            OnPositiveAnswerStrategy.ASK_RECOMMENDED -> askObdProto() //готов
-            OnPositiveAnswerStrategy.SET -> setProto() //готов
-        }
-    }
 
-    suspend fun handleNegativeAnswer(strategy: OnPositiveAnswerStrategy) {
-        when (strategy) {
-            OnPositiveAnswerStrategy.IDLE -> Unit
-            OnPositiveAnswerStrategy.TRY -> {
-                tryProtocolQueue.poll()
-                tryNextProto()
-            }
-            OnPositiveAnswerStrategy.ASK_RECOMMENDED -> askObdProto()
-            OnPositiveAnswerStrategy.SET -> TODO()
-        }
-    }
 
-    private suspend fun setTriedProto() {
+
+
+    suspend fun setTriedProto() {
         if (tryProtocolQueue.isNotEmpty()) {
             _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${tryProtocolQueue.poll().hexOrdinal}")
         }
     }
 
-    private suspend fun setProto() {
+     suspend fun setProto() {
         if (tryProtocolQueue.isNotEmpty()) {
             _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${tryProtocolQueue.poll().hexOrdinal}")
         } else {
@@ -74,8 +57,12 @@ class ProtocolManager() {
         }
     }
 
+    suspend fun skipProto(){
+        tryProtocolQueue.poll()
+        tryNextProto()
+    }
 
-    private suspend fun tryNextProto() {
+    suspend fun tryNextProto() {
         if (tryProtocolQueue.isNotEmpty()) {
             _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.TryProto} ${tryProtocolQueue.peek().hexOrdinal}")
         } else if (tryProtocolQueue.isNotEmpty() && tryProtocolQueue.size == 1) {
@@ -83,7 +70,7 @@ class ProtocolManager() {
         }
     }
 
-    private suspend fun askObdProto() {  //Use only when we want set recommended proto
+    suspend fun askObdProto() {  //Use only when we want set recommended proto
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.GetVehicleProtoAsNumber.command}")
     }
 
@@ -94,10 +81,9 @@ class ProtocolManager() {
                 _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${it.hexOrdinal}")
             }
         }
-        sendNextSettings()
     }
 
-    suspend fun resetSettings(canMode: Boolean = false, auto: Boolean = false) {
+    suspend fun onRestart(canMode: Boolean = false, auto: Boolean = false) {
         checkMods(canMode, auto)
         prepareOBD(canMode, auto)
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${settingsQueue.poll().command}")
@@ -110,7 +96,9 @@ class ProtocolManager() {
         }
     }
 
-    private suspend fun sendNextSettings() {
+    fun isLastCommandSend(): Boolean =  settingsQueue.isEmpty()
+
+    suspend fun sendNextSettings() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${settingsQueue.poll().command}")
     }
 
@@ -129,6 +117,10 @@ class ProtocolManager() {
             settingsQueue.addAll(standardSettingsSet)
         }
 
+    }
+
+    suspend fun setSetting(command: AtCommands) {
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${command.command}")
     }
 
 

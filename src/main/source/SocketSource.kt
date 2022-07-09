@@ -10,7 +10,7 @@ class SocketSource(val socket: Socket) : Source() {
 
 
     override val inputByteFlow: SharedFlow<ByteArray>
-        get() = TODO("Not yet implemented")
+
     override val outputByteFlow: MutableSharedFlow<ByteArray>
         get() = TODO("Not yet implemented")
 
