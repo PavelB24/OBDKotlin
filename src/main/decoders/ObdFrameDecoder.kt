@@ -13,21 +13,26 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>) : Decoder(socketEventFlow) {
 
-    override val buffer = ConcurrentLinkedQueue<ByteArray>()
+    override val buffer = ConcurrentLinkedQueue<String>()
 
 
     override fun decode(bytes: ByteArray) {
         TODO("Not yet implemented")
     }
 
-    fun isPositiveOBDAnswer(): Boolean {
-        return buffer.poll().decodeToString() == "OK"
+    fun isPositiveOBDAnswer(bytes: ByteArray): Boolean {
+        return bytes.decodeToString() == "OK >" || bytes.decodeToString() == "OK>" || bytes.decodeToString() == "OK"
     }
 
-    fun isPositiveProtoOBDAnswer(strategy: OnPositiveAnswerStrategy): Boolean{
+    fun isPositiveIdleAnswer(bytes: ByteArray): Boolean = bytes.decodeToString().contains("ELM327", true)
+
+
+    fun isPositiveProtoOBDAnswer(bytes: ByteArray, strategy: OnPositiveAnswerStrategy): Boolean{
+        //todo
         if (strategy == OnPositiveAnswerStrategy.ASK_RECOMMENDED) {
             Protocol.values().forEach {
-                if(it.hexOrdinal == buffer.peek().decodeToString()){
+                if(it.hexOrdinal == bytes.decodeToString() || it.hexOrdinal == bytes.decodeToString().take(2)){
+                    buffer.add(it.hexOrdinal)
                     return true
                 }
             }
@@ -50,12 +55,12 @@ class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Event<OBDMe
 
     fun getProtoByCachedHex(): Protocol{
         Protocol.values().forEach {
-            if(it.hexOrdinal == buffer.peek().decodeToString()){
+            if(it.hexOrdinal == buffer.peek()){
                 return it
             }
         }
         throw IllegalArgumentException()
     }
 
-    fun getSavedAnswer(): String = buffer.poll().decodeToString()
+    fun getSavedAnswer(): String = buffer.poll()
 }

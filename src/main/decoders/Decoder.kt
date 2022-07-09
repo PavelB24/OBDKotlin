@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 abstract class Decoder(socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>) {
 
-    abstract val buffer: ConcurrentLinkedQueue<ByteArray>()
+    abstract val buffer: ConcurrentLinkedQueue<String>
     //Основная логическая и вычислительная нагрузка тут
     abstract fun decode(bytes: ByteArray)
 
