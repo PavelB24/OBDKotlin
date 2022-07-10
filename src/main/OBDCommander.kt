@@ -1,18 +1,24 @@
+package main
+
+import AtCommands
+import BusCommander
+import Event
+import OBDMessage
+import Protocol
+import ProtocolManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import main.NoSourceProvidedException
-import main.OnPositiveAnswerStrategy
-import main.WorkMode
 import main.decoders.ObdFrameDecoder
 import main.source.Source
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
 
 
 class OBDCommander(
-    private val protoManager: ProtocolManager,
+    private var protoManager: ProtocolManager,
 ) : BusCommander(protoManager) {
 
     constructor(protoManager: ProtocolManager, source: Source) : this(protoManager) {
@@ -23,17 +29,22 @@ class OBDCommander(
         const val OBD_PREFIX = "AT"
     }
 
-    class OBDCommanderBuilder(){
+    class Builder(){
         companion object{
             @JvmStatic
             private val commander = OBDCommander(ProtocolManager())
             @JvmStatic
-            fun addSource(source: Source): OBDCommanderBuilder.Companion{
-                commander.addSource(source)
+            fun addSource(source: Source): Companion {
+                commander.switchSource(source)
                 return this
             }
             @JvmStatic
-            fun build(): OBDCommander{
+            fun addProtocolManager(manager: ProtocolManager): Companion{
+                commander.protoManager = manager
+                return this
+            }
+            @JvmStatic
+            fun build(): OBDCommander {
                 return commander
             }
         }
@@ -44,6 +55,7 @@ class OBDCommander(
      * Try Next
      */
 
+    private val canMode = AtomicBoolean(false)
     private var source: Source? = null
     private var currentProto: Protocol? = null
 
@@ -52,11 +64,6 @@ class OBDCommander(
     private var workMode = WorkMode.IDLE
 
     private var onPositiveAnswerStrategy = OnPositiveAnswerStrategy.IDLE
-
-    private var observeInputJob: Job? = null
-
-    private var observeOutputJob: Job? = null
-
 
     override val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>> = MutableSharedFlow()
 
@@ -68,53 +75,55 @@ class OBDCommander(
     private val obdFrameDecoder = ObdFrameDecoder(socketEventFlow)
 
     private fun observeInput() {
-        observeInputJob?.cancel()
         source?.let {
-            observeInputJob = commanderScope.launch {
+             commanderScope.launch {
                 it.inputByteFlow.onEach {
-                        when (workMode) {
-                            WorkMode.IDLE -> {
-                                if (obdFrameDecoder.isPositiveIdleAnswer(it)) {
-                                    handlePositiveAnswer()
-                                    workMode = WorkMode.PROTOCOL
-                                } else {
-                                    handleNegativeAnswer()
-                                }
-                            }
-                            WorkMode.PROTOCOL -> {
-                                if (obdFrameDecoder.isPositiveProtoOBDAnswer(it, onPositiveAnswerStrategy)) {
-                                    handlePositiveAnswer()
-                                    workMode = WorkMode.SETTINGS
-                                } else {
-                                    handleNegativeAnswer()
-                                }
-                            }
-                            WorkMode.SETTINGS -> {
-                                if (obdFrameDecoder.isPositiveOBDAnswer(it)) {
-                                    if (protoManager.isLastCommandSend()) {
-                                        workMode = WorkMode.COMMANDS
-                                        selectPinDecoder()
-                                    } else {
-                                        handlePositiveAnswer()
-                                    }
-                                } else {
-                                    handleNegativeAnswer()
-                                }
-                            }
-                            WorkMode.COMMANDS -> {
-                                //on command PIN answer should not be true. Only in case new setting it will be true
-                                if (obdFrameDecoder.isPositiveOBDAnswer(it)) {
-
-                                } else {
-                                    if(!pinAnswerDecoder.decode()){
-                                        //todo error
-                                    }
-                                }
-
-                            }
-                            WorkMode.CAN_COMMANDS -> TODO()
-                        }
+                    manageInputData(it)
                 }.collect()
+            }
+        }
+    }
+
+    private suspend fun manageInputData(bytes: ByteArray){
+        when (workMode) {
+            WorkMode.IDLE -> {
+                if (obdFrameDecoder.isPositiveIdleAnswer(bytes)) {
+                    handlePositiveAnswer()
+                    workMode = WorkMode.PROTOCOL
+                } else {
+                    handleNegativeAnswer()
+                }
+            }
+            WorkMode.PROTOCOL -> {
+                if (obdFrameDecoder.isPositiveProtoOBDAnswer(bytes, onPositiveAnswerStrategy)) {
+                    handlePositiveAnswer()
+                    workMode = WorkMode.SETTINGS
+                } else {
+                    handleNegativeAnswer()
+                }
+            }
+            WorkMode.SETTINGS -> {
+                if (obdFrameDecoder.isPositiveOBDAnswer(bytes)) {
+                    if (protoManager.isLastCommandSend()) {
+                        workMode = WorkMode.COMMANDS
+                        selectPinDecoder()
+                    } else {
+                        handlePositiveAnswer()
+                    }
+                } else {
+                    handleNegativeAnswer()
+                }
+            }
+            WorkMode.COMMANDS -> {
+                //on command PIN answer should not be true. Only in case new setting it will be true
+                if (obdFrameDecoder.isPositiveOBDAnswer(bytes)) {
+
+                } else {
+                    if(!pinAnswerDecoder.decode()){
+                        //todo error
+                    }
+                }
+
             }
         }
     }
@@ -156,7 +165,6 @@ class OBDCommander(
             WorkMode.PROTOCOL -> Unit
             WorkMode.SETTINGS -> protoManager.sendNextSettings()
             WorkMode.COMMANDS -> TODO()
-            WorkMode.CAN_COMMANDS -> TODO()
         }
     }
 
@@ -169,7 +177,6 @@ class OBDCommander(
             }
             WorkMode.SETTINGS -> protoManager.sendNextSettings()
             WorkMode.COMMANDS -> TODO()
-            WorkMode.CAN_COMMANDS -> TODO()
         }
     }
 
@@ -179,14 +186,12 @@ class OBDCommander(
             WorkMode.PROTOCOL -> protoManager.setTriedProto()
             WorkMode.SETTINGS -> protoManager.sendNextSettings()
             WorkMode.COMMANDS -> TODO()
-            WorkMode.CAN_COMMANDS -> TODO()
         }
     }
 
-    private fun observeCommands() {
-        observeOutputJob?.cancel()
+    private  fun observeCommands() {
         source?.let { source ->
-            observeOutputJob = commanderScope.launch {
+             commanderScope.launch {
                 protoManager.obdCommandFlow.map {
                     return@map it.toByteArray()
                 }.onEach {
@@ -205,6 +210,7 @@ class OBDCommander(
     override fun switchToCanMode() {
         checkSource()
         protoManager.onRestart(true)
+        canMode.set(true)
     }
 
     override suspend fun resetSettings() {
@@ -258,7 +264,7 @@ class OBDCommander(
         }
     }
 
-    fun addSource(source: Source) {
+    fun switchSource(source: Source) {
         this.source = source
         resetStates()
         observeInput()
@@ -266,6 +272,7 @@ class OBDCommander(
     }
 
     private fun resetStates() {
+        commanderScope.coroutineContext.cancelChildren()
         workMode = WorkMode.IDLE
         onPositiveAnswerStrategy = OnPositiveAnswerStrategy.IDLE
     }
