@@ -2,7 +2,7 @@
 
 enum class AtCommands(val command: String) {
 
-    Repeat(">"), //Repeat last command
+    Repeat("\r"), //Repeat last command
     SetBaudRateDivisor("BRD"),
     Defaults("D"), //Set All to Defaults
     EchoOff("E0"), //Set Echo Off

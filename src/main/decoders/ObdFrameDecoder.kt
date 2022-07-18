@@ -21,7 +21,7 @@ class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Event<OBDMe
     }
 
     fun isPositiveOBDAnswer(bytes: ByteArray): Boolean {
-        return bytes.decodeToString() == "OK >" || bytes.decodeToString() == "OK>" || bytes.decodeToString() == "OK"
+        return bytes.decodeToString() == "OK \r" || bytes.decodeToString() == "OK\r" || bytes.decodeToString() == "OK"
     }
 
     fun isPositiveIdleAnswer(bytes: ByteArray): Boolean = bytes.decodeToString().contains("ELM327", true)

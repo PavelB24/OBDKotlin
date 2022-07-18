@@ -11,7 +11,7 @@ fun ByteArray.toBinaryList(): List<String> {
 }
 
 fun Byte.toHex(): String{
-    return this.toString(16)
+    return Integer.toHexString(this.toUByte().toInt())
 }
 
 
@@ -19,5 +19,9 @@ fun String.hexToBinaryList(): List<String> {
     val strList = this.chunked(2)
     val intList = strList.map { it.toInt(16) }
     return intList.map { Integer.toBinaryString(it) }
+}
+
+fun String.hexToByte(): Byte{
+    return this.toInt(16).toByte()
 }
 
