@@ -3,25 +3,29 @@ package main
 import AtCommands
 import BusCommander
 import Event
-import OBDMessage
 import Protocol
-import ProtocolManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import main.decoders.CanAnswerDecoder
+import main.decoders.Decoder
+import main.messages.OBDDataMessage
 import main.decoders.ObdFrameDecoder
+import main.decoders.PinAnswerDecoder
+import main.decoders.protocol.BaseProtocolManager
+import main.messages.Message
 import main.source.Source
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
 
 
 class OBDCommander(
-    private var protoManager: ProtocolManager,
-) : BusCommander(protoManager) {
+    private val protocolManager: BaseProtocolManager
+) : BusCommander(protocolManager) {
 
-    constructor(protoManager: ProtocolManager, source: Source) : this(protoManager) {
+    constructor(protoManager: BaseProtocolManager, source: Source) : this(protoManager) {
         this.source = source
     }
 
@@ -29,23 +33,30 @@ class OBDCommander(
         const val OBD_PREFIX = "AT"
     }
 
-    class Builder(){
-        companion object{
-            @JvmStatic
-            private val commander = OBDCommander(ProtocolManager())
+    class Builder() {
+        companion object {
+
+            private var source: Source? = null
+            private var protocolManager: BaseProtocolManager = ProtocolManager()
             @JvmStatic
             fun addSource(source: Source): Companion {
-                commander.switchSource(source)
+                this.source = source
                 return this
             }
+
             @JvmStatic
-            fun addProtocolManager(manager: ProtocolManager): Companion{
-                commander.protoManager = manager
+            fun addProtocolManager(manager: BaseProtocolManager): Companion {
+                this.protocolManager = manager
                 return this
             }
+
             @JvmStatic
             fun build(): OBDCommander {
-                return commander
+                return if (source != null){
+                    OBDCommander(protocolManager, source!!)
+                }  else {
+                    OBDCommander(protocolManager)
+                }
             }
         }
     }
@@ -57,26 +68,25 @@ class OBDCommander(
 
     private val canMode = AtomicBoolean(false)
     private var source: Source? = null
-    private var currentProto: Protocol? = null
 
     private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var workMode = WorkMode.IDLE
 
-    private var onPositiveAnswerStrategy = OnPositiveAnswerStrategy.IDLE
+    override val eventFlow: MutableSharedFlow<Message?> = MutableSharedFlow()
 
-    override val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>> = MutableSharedFlow()
 
     init {
         observeInput()
         observeCommands()
     }
 
-    private val obdFrameDecoder = ObdFrameDecoder(socketEventFlow)
+    private val atFrameDecoder: Decoder = ObdFrameDecoder(eventFlow)
+    private var pinFrameDecoder: PinAnswerDecoder? = null
 
     private fun observeInput() {
         source?.let {
-             commanderScope.launch {
+            commanderScope.launch {
                 it.inputByteFlow.onEach {
                     manageInputData(it)
                 }.collect()
@@ -84,31 +94,45 @@ class OBDCommander(
         }
     }
 
-    private suspend fun manageInputData(bytes: ByteArray){
+    private suspend fun manageInputData(bytes: ByteArray) {
+        val message = OBDDataMessage(bytes, workMode)
         when (workMode) {
             WorkMode.IDLE -> {
-                if (obdFrameDecoder.isPositiveIdleAnswer(bytes)) {
-                    handlePositiveAnswer()
+                if (atFrameDecoder.decode(message)) {
                     workMode = WorkMode.PROTOCOL
+                    protocolManager.handleAnswer()
                 } else {
                     handleNegativeAnswer()
                 }
             }
             WorkMode.PROTOCOL -> {
-                if (obdFrameDecoder.isPositiveProtoOBDAnswer(bytes, onPositiveAnswerStrategy)) {
-                    handlePositiveAnswer()
-                    workMode = WorkMode.SETTINGS
+                if (atFrameDecoder.decode(message)) {
+                    workMode = WorkMode.CLARIFICATION
+                    protocolManager.askCurrentProto()
                 } else {
                     handleNegativeAnswer()
                 }
             }
-            WorkMode.SETTINGS -> {
-                if (obdFrameDecoder.isPositiveOBDAnswer(bytes)) {
-                    if (protoManager.isLastCommandSend()) {
-                        workMode = WorkMode.COMMANDS
-                        selectPinDecoder()
+            WorkMode.CLARIFICATION -> {
+                if (atFrameDecoder.decode(message)) {
+                    pinFrameDecoder = if (protoManager.checkIfCanProto(atFrameDecoder.buffer.poll())) {
+                        //TODO PASS FLOW FOR ANSWERS
+                        CanAnswerDecoder()
                     } else {
-                        handlePositiveAnswer()
+                        PinAnswerDecoder()
+                    }
+                    workMode = WorkMode.SETTINGS
+                    protocolManager.sendNextSettings()
+                } else {
+                }
+            }
+            WorkMode.SETTINGS -> {
+                if (atFrameDecoder.decode(message)) {
+                    if (protocolManager.isLastCommandSend()) {
+                        workMode = WorkMode.COMMANDS
+                        protocolManager.askCurrentProto()
+                    } else {
+                        protocolManager.sendNextSettings()
                     }
                 } else {
                     handleNegativeAnswer()
@@ -116,83 +140,24 @@ class OBDCommander(
             }
             WorkMode.COMMANDS -> {
                 //on command PIN answer should not be true. Only in case new setting it will be true
-                if (obdFrameDecoder.isPositiveOBDAnswer(bytes)) {
-
-                } else {
-                    if(!pinAnswerDecoder.decode()){
-                        //todo error
-                    }
-                }
+//                if (obdFrameDecoder.isPositiveOBDAnswer(bytes)) { obdFrameDecoder should not do that
 
             }
+
         }
     }
 
-    private fun selectPinDecoder() {
-        TODO("Not yet implemented")
-    }
 
-    fun setSetting(command: AtCommands) {
+    fun setNewSetting(command: AtCommands) {
         //todo filter command depends on proto protocol
-        protoManager.setSetting(command)
+        protocolManager.setSetting(command)
     }
 
-    private suspend fun handleNegativeAnswer() {
-        when (onPositiveAnswerStrategy) {
-            OnPositiveAnswerStrategy.IDLE -> Unit
-            OnPositiveAnswerStrategy.TRY -> {
-                protoManager.skipProto()
-            }
-            OnPositiveAnswerStrategy.ASK_RECOMMENDED -> protoManager.askObdProto()
-            OnPositiveAnswerStrategy.SET -> TODO()
-            OnPositiveAnswerStrategy.CAN -> TODO()
-        }
-    }
 
-    private suspend fun handlePositiveAnswer() {
-        when (onPositiveAnswerStrategy) {
-            OnPositiveAnswerStrategy.IDLE -> Unit //готов
-            OnPositiveAnswerStrategy.TRY -> handleOnTry()//готов
-            OnPositiveAnswerStrategy.ASK_RECOMMENDED -> handleOnAsk() //готов
-            OnPositiveAnswerStrategy.SET -> handleSet() //готов
-            OnPositiveAnswerStrategy.CAN -> TODO()
-        }
-    }
-
-    private suspend fun handleSet() {
-        when (workMode) {
-            WorkMode.IDLE -> protoManager.setProto()
-            WorkMode.PROTOCOL -> Unit
-            WorkMode.SETTINGS -> protoManager.sendNextSettings()
-            WorkMode.COMMANDS -> TODO()
-        }
-    }
-
-    private suspend fun handleOnAsk() {
-        when (workMode) {
-            WorkMode.IDLE -> protoManager.askObdProto()
-            WorkMode.PROTOCOL -> {
-                currentProto = obdFrameDecoder.getProtoByCachedHex()
-                protoManager.setRecommendedProto(obdFrameDecoder.getSavedAnswer())
-            }
-            WorkMode.SETTINGS -> protoManager.sendNextSettings()
-            WorkMode.COMMANDS -> TODO()
-        }
-    }
-
-    private suspend fun handleOnTry() {
-        when (workMode) {
-            WorkMode.IDLE -> protoManager.tryNextProto()
-            WorkMode.PROTOCOL -> protoManager.setTriedProto()
-            WorkMode.SETTINGS -> protoManager.sendNextSettings()
-            WorkMode.COMMANDS -> TODO()
-        }
-    }
-
-    private  fun observeCommands() {
+    private fun observeCommands() {
         source?.let { source ->
-             commanderScope.launch {
-                protoManager.obdCommandFlow.map {
+            commanderScope.launch {
+                protocolManager.obdCommandFlow.map {
                     return@map it.toByteArray()
                 }.onEach {
                     source.outputByteFlow.emit(it)
@@ -201,47 +166,36 @@ class OBDCommander(
         }
     }
 
-    override fun tryProtos() {
+    override fun tryProto(protocol: Protocol) {
         checkSource()
-        onPositiveAnswerStrategy = OnPositiveAnswerStrategy.TRY
-        protoManager.onRestart()
-    }
-
-    override fun switchToCanMode() {
-        checkSource()
-        protoManager.onRestart(true)
-        canMode.set(true)
+        protocolManager.onRestart(ProtocolManagerStrategy.TRY, protocol)
     }
 
     override suspend fun resetSettings() {
         checkSource()
-        protoManager.onRestart()
+        onReset()
+        protocolManager.reset()
+    }
+
+    private fun onReset() {
+        workMode = WorkMode.IDLE
+        pinFrameDecoder = null
+        atFrameDecoder.buffer.clear()
     }
 
     @Throws(NoSourceProvidedException::class)
     override fun obdAutoAll() {
         checkSource()
-        onPositiveAnswerStrategy = OnPositiveAnswerStrategy.TRY
-        protoManager.onRestart(false, auto = true)
+        protocolManager.onRestart(ProtocolManagerStrategy.AUTO)
     }
+
 
     @Throws(NoSourceProvidedException::class)
-    override fun askAndSetRecommendedProto() {
+    override fun setProto(protocol: Protocol) {
         checkSource()
-        onPositiveAnswerStrategy = OnPositiveAnswerStrategy.ASK_RECOMMENDED
-        protoManager.onRestart()
+        protocolManager.onRestart(ProtocolManagerStrategy.SET, protocol)
     }
 
-    @Throws(NoSourceProvidedException::class)
-    override fun setProto() {
-        checkSource()
-        onPositiveAnswerStrategy = OnPositiveAnswerStrategy.SET
-        protoManager.onRestart()
-    }
-
-    override fun setCustomOBDSettings(obdCommands: Set<String>) {
-        TODO("Not yet implemented")
-    }
 
     override fun setCommand(command: String) { //OBDcommand
         TODO("Not yet implemented")
@@ -273,8 +227,7 @@ class OBDCommander(
 
     private fun resetStates() {
         commanderScope.coroutineContext.cancelChildren()
-        workMode = WorkMode.IDLE
-        onPositiveAnswerStrategy = OnPositiveAnswerStrategy.IDLE
+        onReset()
     }
 
 }

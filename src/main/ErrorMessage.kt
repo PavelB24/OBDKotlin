@@ -1,8 +1,8 @@
 package main
 
-import OBDMessage
+import main.messages.Message
 
-data class ErrorMessage() : OBDMessage(){
+data class ErrorMessage() : Message(){
 
 
 }

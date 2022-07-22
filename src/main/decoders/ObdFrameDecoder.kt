@@ -1,51 +1,66 @@
 package main.decoders
 
-import Event
-import OBDMessage
+import main.messages.Message
 import Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import main.OnPositiveAnswerStrategy
 import main.WorkMode
+import main.messages.InitElmMessage
+import main.messages.OBDDataMessage
+import main.messages.SelectedProtocolMessage
 import java.lang.IllegalArgumentException
-import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
 
-class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>) : Decoder(socketEventFlow) {
+class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Message?>) : Decoder(socketEventFlow) {
 
-    override val buffer = ConcurrentLinkedQueue<String>()
-
-
-    override fun decode(bytes: ByteArray) {
-        TODO("Not yet implemented")
-    }
-
-    fun isPositiveOBDAnswer(bytes: ByteArray): Boolean {
-        return bytes.decodeToString() == "OK \r" || bytes.decodeToString() == "OK\r" || bytes.decodeToString() == "OK"
-    }
-
-    fun isPositiveIdleAnswer(bytes: ByteArray): Boolean = bytes.decodeToString().contains("ELM327", true)
+    override val buffer = ConcurrentLinkedQueue<Message>()
 
 
-    fun isPositiveProtoOBDAnswer(bytes: ByteArray, strategy: OnPositiveAnswerStrategy): Boolean{
-        //todo
-        if (strategy == OnPositiveAnswerStrategy.ASK_RECOMMENDED) {
-            Protocol.values().forEach {
-                if(it.hexOrdinal == bytes.decodeToString() || it.hexOrdinal == bytes.decodeToString().take(2)){
-                    buffer.add(it.hexOrdinal)
-                    return true
-                }
+    override suspend fun decode(message: OBDDataMessage): Boolean {
+        return when (message.workMode) {
+            WorkMode.IDLE -> {
+                isPositiveIdleAnswer(message.binaryData)
             }
-            return false
-        } else
+            WorkMode.PROTOCOL -> {
+                isPositiveOBDAnswer(message.binaryData)
+            }
+            WorkMode.SETTINGS -> {
+                isPositiveOBDAnswer(message.binaryData)
+            }
+            WorkMode.CLARIFICATION -> decodeAnsweredProtocolNumber(message.binaryData)
+            else -> { false }
+        }
     }
 
-    fun isReadyForNewCommand(bytes: ByteArray): Boolean{
+    private suspend fun isPositiveOBDAnswer(bytes: ByteArray): Boolean {
+        val decodedString = bytes.decodeToString()
+        return decodedString.contains("ok", true)
+    }
+
+    private suspend fun isPositiveIdleAnswer(bytes: ByteArray): Boolean {
+        val decodedString = bytes.decodeToString()
+        return if (decodedString.contains("elm327", true)) {
+            socketEventFlow.emit(InitElmMessage(decodedString.substring(7, 18)))
+            true
+        } else false
+
+    }
+
+    private fun decodeAnsweredProtocolNumber(bytes: ByteArray): Boolean {
+        Protocol.values().forEach {
+            if (it.hexOrdinal == bytes.decodeToString() || it.hexOrdinal == bytes.decodeToString().take(2)) {
+                buffer.add(SelectedProtocolMessage(it))
+                return true
+            }
+        }
+        return false
+    }
+
+    fun isReadyForNewCommand(bytes: ByteArray): Boolean {
         return bytes.decodeToString() == AtCommands.Repeat.command
     }
 
     fun handleDataAnswer(bytes: ByteArray) {
-        if(bytes.decodeToString() != "?"){
+        if (bytes.decodeToString() != "?") {
             buffer.add(bytes)
         } else {
             //TODO
@@ -53,9 +68,9 @@ class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Event<OBDMe
 
     }
 
-    fun getProtoByCachedHex(): Protocol{
+    fun getProtoByCachedHex(): Protocol {
         Protocol.values().forEach {
-            if(it.hexOrdinal == buffer.peek()){
+            if (it.hexOrdinal == buffer.peek()) {
                 return it
             }
         }

@@ -1,16 +1,15 @@
 package main.decoders
 
-import Event
-import OBDMessage
+import main.messages.Message
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
+import main.messages.OBDDataMessage
 import java.util.concurrent.ConcurrentLinkedQueue
 
-abstract class Decoder(socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>) {
+abstract class Decoder() {
 
-    abstract val buffer: ConcurrentLinkedQueue<String>
+    abstract val buffer: ConcurrentLinkedQueue<Message>
     //Основная логическая и вычислительная нагрузка тут
-    abstract fun decode(bytes: ByteArray)
+    abstract suspend fun decode(message: OBDDataMessage): Boolean
 
 
 }

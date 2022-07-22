@@ -1,125 +1,133 @@
+package main
+
+import AtCommands
+import Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import main.ModsConflictException
-import main.OBDCommander
+import main.decoders.CanAnswerDecoder
+import main.decoders.Decoder
+import main.decoders.PinAnswerDecoder
+import main.decoders.protocol.BaseProtocolManager
+import main.messages.Message
+import main.messages.SelectedProtocolMessage
 import java.util.concurrent.ConcurrentLinkedQueue
-import kotlin.jvm.Throws
 
-class ProtocolManager() {
+class ProtocolManager: BaseProtocolManager() {
 
-    constructor(protocols: Set<Protocol>) : this() {
-        usersProtocolSet.addAll(protocols)
-    }
 
-    constructor(protocol: Protocol) : this() {
-        usersProtocolSet.add(protocol)
-    }
+    private var strategy: ProtocolManagerStrategy = ProtocolManagerStrategy.IDLE
 
-    private var usersProtocolSet: MutableSet<Protocol> = mutableSetOf()
     private val _obdCommandFlow = MutableSharedFlow<String>()
     val obdCommandFlow: SharedFlow<String> = _obdCommandFlow
 
     private val standardSettingsSet: Set<AtCommands> = setOf(
-        AtCommands.ResetAll, AtCommands.PrintingSpacesOff,
-        AtCommands.EchoOff, AtCommands.AllowLongMessages
+        AtCommands.ResetAll, AtCommands.EchoOff, AtCommands.AllowLongMessages,
+        AtCommands.PrintingSpacesOff
     )
 
     private val canCommandsSet: Set<AtCommands> = setOf(
-        AtCommands.ResetAll, AtCommands.PrintingSpacesOff,
-        AtCommands.EchoOff, AtCommands.AllowLongMessages
+        AtCommands.AllowLongMessages
     )
 
 
-    private val standardProtocolSet: Set<Protocol> = setOf(
-        Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud, Protocol.AUTOMATIC
-    )
+    private var userProtocol: Protocol? = null
 
-    private val tryProtocolQueue = ConcurrentLinkedQueue<Protocol>()
     private val settingsQueue = ConcurrentLinkedQueue<AtCommands>()
+    private val protocolQueue = ConcurrentLinkedQueue<Protocol>()
 
     //invoke this first time with WM idle when switch into proto
 
 
-
-
-    suspend fun setTriedProto() {
-        if (tryProtocolQueue.isNotEmpty()) {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${tryProtocolQueue.poll().hexOrdinal}")
+    suspend fun handleAnswer() {
+        when (strategy) {
+            ProtocolManagerStrategy.IDLE -> {}
+            ProtocolManagerStrategy.TRY -> tryProto()
+            ProtocolManagerStrategy.SET -> setProto()
+            ProtocolManagerStrategy.AUTO -> setProto()
         }
     }
 
-     suspend fun setProto() {
-        if (tryProtocolQueue.isNotEmpty()) {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${tryProtocolQueue.poll().hexOrdinal}")
+
+    private suspend fun setProto() {
+        if (protocolQueue.isNotEmpty()) {
+            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.SetProto}${protocolQueue.poll().hexOrdinal}")
         } else {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${Protocol.AUTOMATIC.hexOrdinal}")
+            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.SetProto}${Protocol.AUTOMATIC.hexOrdinal}")
         }
     }
 
-    suspend fun skipProto(){
-        tryProtocolQueue.poll()
-        tryNextProto()
+    private suspend fun skipProto() {
+        protocolQueue.poll()
+        tryProto()
     }
 
-    suspend fun tryNextProto() {
-        if (tryProtocolQueue.isNotEmpty()) {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.TryProto} ${tryProtocolQueue.peek().hexOrdinal}")
-        } else if (tryProtocolQueue.isNotEmpty() && tryProtocolQueue.size == 1) {
-            setTriedProto()
+    private suspend fun tryProto() {
+        if (protocolQueue.isNotEmpty()) {
+            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.TryProto}${protocolQueue.peek().hexOrdinal}")
         }
     }
 
     suspend fun askObdProto() {  //Use only when we want set recommended proto
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.GetVehicleProtoAsNumber.command}")
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
     }
+
 
     //Set proto without try or checking results only after obd answer with hexNum of proto
-    suspend fun setRecommendedProto(hex: String) {
-        Protocol.values().forEach {
-            if (it.hexOrdinal == hex) {
-                _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${AtCommands.SetProto} ${it.hexOrdinal}")
-            }
+    suspend fun askCurrentProto() {
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
+    }
+
+    suspend fun onRestart(strategy: ProtocolManagerStrategy, protocol: Protocol? = null) {
+        if (strategy == ProtocolManagerStrategy.IDLE) {
+            throw java.lang.IllegalArgumentException("Idle ProtocolManagerStrategy should not be provided")
         }
+        this.strategy = strategy
+        userProtocol = protocol
+        prepare()
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")
     }
 
-    suspend fun onRestart(canMode: Boolean = false, auto: Boolean = false) {
-        checkMods(canMode, auto)
-        prepareOBD(canMode, auto)
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${settingsQueue.poll().command}")
+    suspend fun reset(){
+        strategy = ProtocolManagerStrategy.IDLE
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.ResetAll.command}")
     }
 
-    @Throws(ModsConflictException::class)
-    private fun checkMods(canMode: Boolean , auto: Boolean) {
-        if(canMode && auto){
-            throw ModsConflictException()
-        }
-    }
-
-    fun isLastCommandSend(): Boolean =  settingsQueue.isEmpty()
+    fun isLastCommandSend(): Boolean = settingsQueue.isEmpty()
 
     suspend fun sendNextSettings() {
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${settingsQueue.poll().command}")
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")
     }
 
-    private fun prepareOBD(canMode: Boolean, auto: Boolean) {
-        if (usersProtocolSet.isNotEmpty() && !auto && !canMode) {
-            tryProtocolQueue.addAll(usersProtocolSet)
+    private suspend fun prepare() {
+        if (userProtocol != null && strategy != ProtocolManagerStrategy.AUTO) {
+            protocolQueue.add(userProtocol)
             settingsQueue.addAll(standardSettingsSet)
-        } else if (auto) {
-            tryProtocolQueue.add(Protocol.AUTOMATIC)
+        } else if (strategy == ProtocolManagerStrategy.AUTO) {
+            protocolQueue.add(Protocol.AUTOMATIC)
             settingsQueue.addAll(standardSettingsSet)
-        } else if (canMode){
-            tryProtocolQueue.add(Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud)
-            settingsQueue.addAll(canCommandsSet)
         } else {
-            tryProtocolQueue.addAll(standardProtocolSet)
-            settingsQueue.addAll(standardSettingsSet)
+            userProtocol = null
+            strategy = ProtocolManagerStrategy.IDLE
+            throw ModsConflictException("For non-auto strategy, protocol should be provided")
         }
-
     }
 
     suspend fun setSetting(command: AtCommands) {
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX} ${command.command}")
+        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${command.command}")
+    }
+
+    fun checkIfCanProto(proto: Message): Boolean {
+        if (proto is SelectedProtocolMessage) {
+            return when (proto.protocol) {
+                //todo add settings if CAN
+                Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud -> { true }
+                Protocol.ISO_15765_4_CAN_29_bit_ID_500kbaud -> { true }
+                Protocol.ISO_15765_4_CAN_11_bit_ID_250kbaud -> { true }
+                Protocol.ISO_15765_4_CAN_29_bit_ID_250kbaud -> { true }
+                Protocol.SAE_J1939_CAN_29_bit_ID_250kbaud -> { true }
+                else -> false
+            }
+        }
     }
 
 

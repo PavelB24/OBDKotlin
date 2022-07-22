@@ -1,12 +1,9 @@
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import java.io.IOException
-import java.nio.channels.SocketChannel
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.jvm.Throws
+import main.ProtocolManager
+import main.decoders.protocol.BaseProtocolManager
+import main.messages.Message
 
-abstract class BusCommander( protoManager: ProtocolManager) {
+abstract class BusCommander( protoManager: BaseProtocolManager) {
 /**
     <-----> Основной источник по 15765-4 <----->
     https://www.drive2.ru/b/472129194529128744/?m=526712250266812507&page=0#a526712250266812507
@@ -33,19 +30,16 @@ abstract class BusCommander( protoManager: ProtocolManager) {
 */
 
 
-    abstract val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>
+    abstract val eventFlow: MutableSharedFlow<Message?>
 
-    abstract fun tryProtos()
+    abstract fun tryProto(protocol: Protocol)
 
-    abstract fun switchToCanMode()
 
     abstract suspend fun resetSettings()
 
     abstract fun obdAutoAll()
 
-    abstract fun setProto()
-
-    abstract fun setCustomOBDSettings(obdCommands: Set<String>)
+    abstract fun setProto(protocol: Protocol)
 
     abstract fun setCommand(command: String)
 
@@ -53,7 +47,6 @@ abstract class BusCommander( protoManager: ProtocolManager) {
 
     abstract fun stopJob()
 
-    abstract fun askAndSetRecommendedProto()
 
 
 }
