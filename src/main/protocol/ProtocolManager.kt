@@ -1,13 +1,11 @@
-package main
+package main.protocol
 
 import AtCommands
-import Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import main.decoders.CanAnswerDecoder
-import main.decoders.Decoder
-import main.decoders.PinAnswerDecoder
-import main.decoders.protocol.BaseProtocolManager
+import main.exceptions.ModsConflictException
+import main.OBDCommander
+import main.ProtocolManagerStrategy
 import main.messages.Message
 import main.messages.SelectedProtocolMessage
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -92,7 +90,7 @@ class ProtocolManager: BaseProtocolManager() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.ResetAll.command}")
     }
 
-    fun isLastCommandSend(): Boolean = settingsQueue.isEmpty()
+    fun isLastSettingSend(): Boolean = settingsQueue.isEmpty()
 
     suspend fun sendNextSettings() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")

@@ -1,4 +1,4 @@
-package main.decoders.protocol
+package main.protocol
 
 abstract class BaseProtocolManager {
 }

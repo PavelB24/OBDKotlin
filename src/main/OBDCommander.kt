@@ -2,8 +2,7 @@ package main
 
 import AtCommands
 import BusCommander
-import Event
-import Protocol
+import main.protocol.Protocol
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
@@ -14,8 +13,11 @@ import main.decoders.Decoder
 import main.messages.OBDDataMessage
 import main.decoders.ObdFrameDecoder
 import main.decoders.PinAnswerDecoder
-import main.decoders.protocol.BaseProtocolManager
+import main.exceptions.NoSourceProvidedException
+import main.exceptions.WrongInitCommandException
+import main.protocol.BaseProtocolManager
 import main.messages.Message
+import main.protocol.ProtocolManager
 import main.source.Source
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
@@ -128,7 +130,7 @@ class OBDCommander(
             }
             WorkMode.SETTINGS -> {
                 if (atFrameDecoder.decode(message)) {
-                    if (protocolManager.isLastCommandSend()) {
+                    if (protocolManager.isLastSettingSend()) {
                         workMode = WorkMode.COMMANDS
                         protocolManager.askCurrentProto()
                     } else {
@@ -144,6 +146,21 @@ class OBDCommander(
 
             }
 
+        }
+    }
+    @Throws(WrongInitCommandException::class)
+    private fun handleNegativeAnswer() {
+        //TODO handle errors
+        when(workMode){
+            WorkMode.COMMANDS -> {
+                skipCommand()
+            }
+            WorkMode.SETTINGS -> {
+                skipSetting()
+            }
+            else -> {
+                throw WrongInitCommandException()
+            }
         }
     }
 

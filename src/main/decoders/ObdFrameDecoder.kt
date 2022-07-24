@@ -1,7 +1,7 @@
 package main.decoders
 
 import main.messages.Message
-import Protocol
+import main.protocol.Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
 import main.WorkMode
 import main.messages.InitElmMessage

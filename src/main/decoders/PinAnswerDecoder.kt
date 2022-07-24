@@ -1,6 +1,7 @@
 package main.decoders
 
 import kotlinx.coroutines.flow.MutableSharedFlow
+import main.OBDCommander
 import main.messages.Message
 import main.messages.OBDDataMessage
 import java.util.concurrent.ConcurrentLinkedQueue

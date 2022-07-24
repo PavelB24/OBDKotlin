@@ -1,4 +1,4 @@
-package main
+package main.exceptions
 
 class ModsConflictException() : Exception() {
 

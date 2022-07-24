@@ -1,6 +1,6 @@
 package main.messages
 
-import Protocol
+import main.protocol.Protocol
 
 data class SelectedProtocolMessage(
     val protocol: Protocol

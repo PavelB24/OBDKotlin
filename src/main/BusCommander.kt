@@ -1,7 +1,7 @@
 import kotlinx.coroutines.flow.MutableSharedFlow
-import main.ProtocolManager
-import main.decoders.protocol.BaseProtocolManager
+import main.protocol.BaseProtocolManager
 import main.messages.Message
+import main.protocol.Protocol
 
 abstract class BusCommander( protoManager: BaseProtocolManager) {
 /**
