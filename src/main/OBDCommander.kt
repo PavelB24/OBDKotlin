@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import main.commandProcessors.CanCommandHandler
+import main.commandProcessors.CommandHandler
+import main.commandProcessors.CommonCommandHandler
 import main.decoders.CanAnswerDecoder
 import main.decoders.Decoder
 import main.messages.OBDDataMessage
@@ -40,6 +43,7 @@ class OBDCommander(
 
             private var source: Source? = null
             private var protocolManager: BaseProtocolManager = ProtocolManager()
+
             @JvmStatic
             fun addSource(source: Source): Companion {
                 this.source = source
@@ -54,9 +58,9 @@ class OBDCommander(
 
             @JvmStatic
             fun build(): OBDCommander {
-                return if (source != null){
+                return if (source != null) {
                     OBDCommander(protocolManager, source!!)
-                }  else {
+                } else {
                     OBDCommander(protocolManager)
                 }
             }
@@ -76,6 +80,8 @@ class OBDCommander(
     private var workMode = WorkMode.IDLE
 
     override val eventFlow: MutableSharedFlow<Message?> = MutableSharedFlow()
+
+    private var commandHandler: CommandHandler? = null
 
 
     init {
@@ -107,6 +113,7 @@ class OBDCommander(
                     handleNegativeAnswer()
                 }
             }
+
             WorkMode.PROTOCOL -> {
                 if (atFrameDecoder.decode(message)) {
                     workMode = WorkMode.CLARIFICATION
@@ -115,24 +122,27 @@ class OBDCommander(
                     handleNegativeAnswer()
                 }
             }
+
             WorkMode.CLARIFICATION -> {
                 if (atFrameDecoder.decode(message)) {
-                    pinFrameDecoder = if (protoManager.checkIfCanProto(atFrameDecoder.buffer.poll())) {
+                    if (protocolManager.checkIfCanProto(atFrameDecoder.buffer.poll())) {
                         //TODO PASS FLOW FOR ANSWERS
-                        CanAnswerDecoder()
+                        pinFrameDecoder = CanAnswerDecoder()
+                        commandHandler = CanCommandHandler()
                     } else {
-                        PinAnswerDecoder()
+                        pinFrameDecoder= PinAnswerDecoder()
+                        commandHandler = CommonCommandHandler()
                     }
                     workMode = WorkMode.SETTINGS
                     protocolManager.sendNextSettings()
                 } else {
                 }
             }
+
             WorkMode.SETTINGS -> {
                 if (atFrameDecoder.decode(message)) {
                     if (protocolManager.isLastSettingSend()) {
                         workMode = WorkMode.COMMANDS
-                        protocolManager.askCurrentProto()
                     } else {
                         protocolManager.sendNextSettings()
                     }
@@ -140,6 +150,7 @@ class OBDCommander(
                     handleNegativeAnswer()
                 }
             }
+
             WorkMode.COMMANDS -> {
                 //on command PIN answer should not be true. Only in case new setting it will be true
 //                if (obdFrameDecoder.isPositiveOBDAnswer(bytes)) { obdFrameDecoder should not do that
@@ -148,15 +159,16 @@ class OBDCommander(
 
         }
     }
+
     @Throws(WrongInitCommandException::class)
-    private fun handleNegativeAnswer() {
+    private suspend fun handleNegativeAnswer() {
         //TODO handle errors
-        when(workMode){
+        when (workMode) {
             WorkMode.COMMANDS -> {
                 skipCommand()
             }
             WorkMode.SETTINGS -> {
-                skipSetting()
+                protocolManager.sendNextSettings()
             }
             else -> {
                 throw WrongInitCommandException()
@@ -179,6 +191,15 @@ class OBDCommander(
                 }.onEach {
                     source.outputByteFlow.emit(it)
                 }.collect()
+            }
+            commanderScope.launch {
+                commandHandler?.let {handler->
+                    handler.commandFlow.map {command->
+                        return@map command.toByteArray()
+                    }.onEach {
+                        source.outputByteFlow.emit(it)
+                    }.collect()
+                }
             }
         }
     }
@@ -240,6 +261,11 @@ class OBDCommander(
         resetStates()
         observeInput()
         observeCommands()
+    }
+
+
+    fun configureForCanCommands() {
+        //ATSH ATCRA
     }
 
     private fun resetStates() {

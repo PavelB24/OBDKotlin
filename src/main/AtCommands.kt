@@ -71,6 +71,10 @@ enum class AtCommands(val command: String) {
     ClientMonitoringOff("CSM0"),
     ClientMonitoringOn("CSM1"),
     SetIdMask("CM"), //hhh hhhhhhhh
+    AdaptiveTimingOn("AT1"),
+    AdaptiveTimingOff("AT0"),
+    AutoFormatCanFramesOn("CAF1"),
+    AutoFormatCanFramesOff("CAF0"),
 
 
 

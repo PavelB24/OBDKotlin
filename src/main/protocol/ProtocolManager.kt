@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import main.exceptions.ModsConflictException
 import main.OBDCommander
 import main.ProtocolManagerStrategy
+import main.exceptions.WrongMessageTypeException
 import main.messages.Message
 import main.messages.SelectedProtocolMessage
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -16,15 +17,16 @@ class ProtocolManager: BaseProtocolManager() {
     private var strategy: ProtocolManagerStrategy = ProtocolManagerStrategy.IDLE
 
     private val _obdCommandFlow = MutableSharedFlow<String>()
-    val obdCommandFlow: SharedFlow<String> = _obdCommandFlow
+    override val obdCommandFlow: SharedFlow<String> = _obdCommandFlow
 
     private val standardSettingsSet: Set<AtCommands> = setOf(
         AtCommands.ResetAll, AtCommands.EchoOff, AtCommands.AllowLongMessages,
         AtCommands.PrintingSpacesOff
     )
 
-    private val canCommandsSet: Set<AtCommands> = setOf(
-        AtCommands.AllowLongMessages
+    private val additionalCommandsSet: Set<AtCommands> = setOf(
+        AtCommands.AllowLongMessages, AtCommands.AutoFormatCanFramesOff,
+        AtCommands.FlowControlOff,
     )
 
 
@@ -36,7 +38,7 @@ class ProtocolManager: BaseProtocolManager() {
     //invoke this first time with WM idle when switch into proto
 
 
-    suspend fun handleAnswer() {
+    override suspend fun handleAnswer() {
         when (strategy) {
             ProtocolManagerStrategy.IDLE -> {}
             ProtocolManagerStrategy.TRY -> tryProto()
@@ -44,7 +46,6 @@ class ProtocolManager: BaseProtocolManager() {
             ProtocolManagerStrategy.AUTO -> setProto()
         }
     }
-
 
     private suspend fun setProto() {
         if (protocolQueue.isNotEmpty()) {
@@ -65,17 +66,17 @@ class ProtocolManager: BaseProtocolManager() {
         }
     }
 
-    suspend fun askObdProto() {  //Use only when we want set recommended proto
+    override suspend fun askObdProto() {  //Use only when we want set recommended proto
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
     }
 
 
     //Set proto without try or checking results only after obd answer with hexNum of proto
-    suspend fun askCurrentProto() {
+    override suspend fun askCurrentProto() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
     }
 
-    suspend fun onRestart(strategy: ProtocolManagerStrategy, protocol: Protocol? = null) {
+    override suspend fun onRestart(strategy: ProtocolManagerStrategy, protocol: Protocol?) {
         if (strategy == ProtocolManagerStrategy.IDLE) {
             throw java.lang.IllegalArgumentException("Idle ProtocolManagerStrategy should not be provided")
         }
@@ -85,14 +86,14 @@ class ProtocolManager: BaseProtocolManager() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")
     }
 
-    suspend fun reset(){
+    override suspend fun reset(){
         strategy = ProtocolManagerStrategy.IDLE
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.ResetAll.command}")
     }
 
-    fun isLastSettingSend(): Boolean = settingsQueue.isEmpty()
+    override fun isLastSettingSend(): Boolean = settingsQueue.isEmpty()
 
-    suspend fun sendNextSettings() {
+    override suspend fun sendNextSettings() {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")
     }
 
@@ -110,14 +111,14 @@ class ProtocolManager: BaseProtocolManager() {
         }
     }
 
-    suspend fun setSetting(command: AtCommands) {
+    override suspend fun setSetting(command: AtCommands) {
         _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${command.command}")
     }
 
-    fun checkIfCanProto(proto: Message): Boolean {
+    @Throws(WrongMessageTypeException::class)
+    override fun checkIfCanProto(proto: Message): Boolean {
         if (proto is SelectedProtocolMessage) {
-            return when (proto.protocol) {
-                //todo add settings if CAN
+            val isCan = when (proto.protocol) {
                 Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud -> { true }
                 Protocol.ISO_15765_4_CAN_29_bit_ID_500kbaud -> { true }
                 Protocol.ISO_15765_4_CAN_11_bit_ID_250kbaud -> { true }
@@ -125,6 +126,12 @@ class ProtocolManager: BaseProtocolManager() {
                 Protocol.SAE_J1939_CAN_29_bit_ID_250kbaud -> { true }
                 else -> false
             }
+            if (isCan){
+                settingsQueue.addAll(additionalCommandsSet)
+            }
+            return isCan
+        } else{
+            throw WrongMessageTypeException("SelectedProtocolMessage should be provided")
         }
     }
 
