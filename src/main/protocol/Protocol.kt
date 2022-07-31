@@ -1,3 +1,5 @@
+package main.protocol
+
 enum class Protocol(val hexOrdinal: String) {
 
     AUTOMATIC("0"),

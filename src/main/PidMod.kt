@@ -1,4 +1,4 @@
-enum class PidMods(val hex: String) {
+enum class PidMod(val hex: String) {
 
     SHOW_CURRENT("01"),
     SHOW_FREEZE_FRAME("02"),

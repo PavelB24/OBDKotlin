@@ -1,13 +1,10 @@
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import java.io.IOException
-import java.nio.channels.SocketChannel
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.jvm.Throws
+import main.protocol.BaseProtocolManager
+import main.messages.Message
+import main.protocol.Protocol
 
-abstract class BusCommander( protoManager: ProtocolManager) {
-/**
+abstract class BusCommander( protoManager: BaseProtocolManager) {
+    /**
     <-----> Основной источник по 15765-4 <----->
     https://www.drive2.ru/b/472129194529128744/?m=526712250266812507&page=0#a526712250266812507
     <-----> Хак шины <----->
@@ -30,22 +27,43 @@ abstract class BusCommander( protoManager: ProtocolManager) {
     AT FC SD 30 00 00
     AT FC SM 1 // Режим Flow Control 1 должен быть определен после FC SH и FC SD, иначе в ответ придет "?"
     03 22 F4 0С 55 55 55 55 // UDS запрос оборотов двигателя
-*/
+
+    ИНФОРМАЦИЯ ПО ОБЩЕНИЮ НА КАН ШИНЕ
+    https://en.wikipedia.org/wiki/Unified_Diagnostic_Services
+    открытие сессии диагностики 10C0
+    https://www.csselectronics.com/pages/uds-protocol-tutorial-unified-diagnostic-services
+    https://automotive.wiki/index.php/ISO_14229
+    https://community.carloop.io/t/list-of-can-id-descriptions-from-opengarages-org/104
+
+    FORD
+    https://sourceforge.net/p/ecu/wiki/canbus/
+    сайт хохла петуха про ид фордов
+    http://sergeyk.kiev.ua/avto/ford_CAN_bus/
+    BMV
+    http://www.loopybunny.co.uk/CarPC/k_can.html
+    MAZDA
+    http://www.madox.net/blog/projects/mazda-can-bus/
+    LEXUS
+    https://github.com/Paucpauc/lexus_canbus_id
+    Dodge
+    http://opengarages.org/index.php/Dodge_CAN_ID
+    Volvo
+    https://docs.google.com/spreadsheets/d/10vq5NIZu0Sd2SSoK2_YSrcsWrItZNC0X2rPcIWvLuS8/edit#gid=542587416
+    Reno
+    https://github.com/ashtorak/CanSeeNoiseGen/blob/main/src/zoe.cpp
+     */
 
 
-    abstract val socketEventFlow: MutableSharedFlow<Event<OBDMessage?>>
+    abstract val eventFlow: MutableSharedFlow<Message?>
 
-    abstract fun tryProtos()
+    abstract fun tryProto(protocol: Protocol)
 
-    abstract fun switchToCanMode()
 
     abstract suspend fun resetSettings()
 
     abstract fun obdAutoAll()
 
-    abstract fun setProto()
-
-    abstract fun setCustomOBDSettings(obdCommands: Set<String>)
+    abstract fun setProto(protocol: Protocol)
 
     abstract fun setCommand(command: String)
 
@@ -53,7 +71,6 @@ abstract class BusCommander( protoManager: ProtocolManager) {
 
     abstract fun stopJob()
 
-    abstract fun askAndSetRecommendedProto()
 
 
 }

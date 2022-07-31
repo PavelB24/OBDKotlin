@@ -2,7 +2,7 @@
 
 enum class AtCommands(val command: String) {
 
-    Repeat(">"), //Repeat last command
+    Repeat("\r"), //Repeat last command
     SetBaudRateDivisor("BRD"),
     Defaults("D"), //Set All to Defaults
     EchoOff("E0"), //Set Echo Off
@@ -71,6 +71,10 @@ enum class AtCommands(val command: String) {
     ClientMonitoringOff("CSM0"),
     ClientMonitoringOn("CSM1"),
     SetIdMask("CM"), //hhh hhhhhhhh
+    AdaptiveTimingOn("AT1"),
+    AdaptiveTimingOff("AT0"),
+    AutoFormatCanFramesOn("CAF1"),
+    AutoFormatCanFramesOff("CAF0"),
 
 
 
