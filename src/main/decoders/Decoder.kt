@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import main.messages.OBDDataMessage
 import java.util.concurrent.ConcurrentLinkedQueue
 
-abstract class Decoder() {
+abstract class Decoder(eventFlow: MutableSharedFlow<Message?>) {
 
     abstract val buffer: ConcurrentLinkedQueue<Message>
     //Основная логическая и вычислительная нагрузка тут

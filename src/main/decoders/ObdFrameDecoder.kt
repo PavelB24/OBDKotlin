@@ -7,7 +7,6 @@ import main.WorkMode
 import main.messages.InitElmMessage
 import main.messages.OBDDataMessage
 import main.messages.SelectedProtocolMessage
-import java.lang.IllegalArgumentException
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Message?>) : Decoder(socketEventFlow) {
@@ -37,8 +36,10 @@ class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Message?>) 
     }
 
     private suspend fun isPositiveIdleAnswer(bytes: ByteArray): Boolean {
+
         val decodedString = bytes.decodeToString()
         return if (decodedString.contains("elm327", true)) {
+            //TODO REMAKE OFFSET AND LIMIT FOR SUBSTRING
             socketEventFlow.emit(InitElmMessage(decodedString.substring(7, 18)))
             true
         } else false
@@ -47,7 +48,8 @@ class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Message?>) 
 
     private fun decodeAnsweredProtocolNumber(bytes: ByteArray): Boolean {
         Protocol.values().forEach {
-            if (it.hexOrdinal == bytes.decodeToString() || it.hexOrdinal == bytes.decodeToString().take(2)) {
+            val decodedMessage = bytes.decodeToString()
+            if (it.hexOrdinal == decodedMessage || it.hexOrdinal == decodedMessage.take(2)) {
                 buffer.add(SelectedProtocolMessage(it))
                 return true
             }
@@ -55,27 +57,5 @@ class ObdFrameDecoder(private val socketEventFlow: MutableSharedFlow<Message?>) 
         return false
     }
 
-    fun isReadyForNewCommand(bytes: ByteArray): Boolean {
-        return bytes.decodeToString() == AtCommands.Repeat.command
-    }
 
-    fun handleDataAnswer(bytes: ByteArray) {
-        if (bytes.decodeToString() != "?") {
-            buffer.add(bytes)
-        } else {
-            //TODO
-        }
-
-    }
-
-    fun getProtoByCachedHex(): Protocol {
-        Protocol.values().forEach {
-            if (it.hexOrdinal == buffer.peek()) {
-                return it
-            }
-        }
-        throw IllegalArgumentException()
-    }
-
-    fun getSavedAnswer(): String = buffer.poll()
 }

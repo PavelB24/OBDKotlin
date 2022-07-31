@@ -1,6 +1,6 @@
 package main
 
-import PidMod
+import main.commands.PidMod
 
 
 data class MultiCommand(

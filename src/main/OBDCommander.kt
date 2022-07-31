@@ -1,6 +1,5 @@
 package main
 
-import AtCommands
 import BusCommander
 import main.protocol.Protocol
 import kotlinx.coroutines.*
@@ -11,16 +10,19 @@ import kotlinx.coroutines.flow.onEach
 import main.commandProcessors.CanCommandHandler
 import main.commandProcessors.CommandHandler
 import main.commandProcessors.CommonCommandHandler
+import main.commands.AtCommands
 import main.decoders.CanAnswerDecoder
 import main.decoders.Decoder
 import main.messages.OBDDataMessage
 import main.decoders.ObdFrameDecoder
 import main.decoders.PinAnswerDecoder
+import main.exceptions.ModsConflictException
 import main.exceptions.NoSourceProvidedException
 import main.exceptions.WrongInitCommandException
 import main.protocol.BaseProtocolManager
 import main.messages.Message
 import main.protocol.ProtocolManager
+import main.protocol.ProtocolManagerStrategy
 import main.source.Source
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
@@ -34,9 +36,6 @@ class OBDCommander(
         this.source = source
     }
 
-    companion object {
-        const val OBD_PREFIX = "AT"
-    }
 
     class Builder() {
         companion object {
@@ -77,7 +76,9 @@ class OBDCommander(
 
     private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private var workMode = WorkMode.IDLE
+    var workMode = WorkMode.IDLE
+        private set
+
 
     override val eventFlow: MutableSharedFlow<Message?> = MutableSharedFlow()
 
@@ -164,9 +165,6 @@ class OBDCommander(
     private suspend fun handleNegativeAnswer() {
         //TODO handle errors
         when (workMode) {
-            WorkMode.COMMANDS -> {
-                skipCommand()
-            }
             WorkMode.SETTINGS -> {
                 protocolManager.sendNextSettings()
             }
@@ -176,9 +174,17 @@ class OBDCommander(
         }
     }
 
-
-    fun setNewSetting(command: AtCommands) {
+    /**
+     * Use carefully, only if you sure in your command
+     */
+    override fun setNewSetting(command: AtCommands) {
         //todo filter command depends on proto protocol
+        checkSource()
+        if(command == AtCommands.ResetAll){
+            onReset()
+        }
+        cancelRepeteJobs()
+        workMode = WorkMode.SETTINGS
         protocolManager.setSetting(command)
     }
 
@@ -216,6 +222,7 @@ class OBDCommander(
     }
 
     private fun onReset() {
+        protocolManager.resetStates()
         workMode = WorkMode.IDLE
         pinFrameDecoder = null
         atFrameDecoder.buffer.clear()
@@ -235,14 +242,25 @@ class OBDCommander(
     }
 
 
-    override fun setCommand(command: String) { //OBDcommand
-        TODO("Not yet implemented")
+    override fun setCommand(command: PidCommands) {
+        checkSourceAndMode(WorkMode.COMMANDS)
+        commandHandler?.let {
+            it.receiveCommand(command)
+        }
     }
-
-    override fun setPinCommand(command: String) { //PINCommand
-        TODO("Not yet implemented")
+    override fun setCommand(customCommand: String) {
+        checkSourceAndMode(WorkMode.COMMANDS)
+        commandHandler?.let {
+            it.receiveCommand(customCommand)
+        }
     }
-
+    @Throws(ModsConflictException::class)
+    private fun checkSourceAndMode(mode: WorkMode) {
+        checkSource()
+        if(workMode != mode){
+            throw ModsConflictException("${mode.name} are not allowed in ${workMode.name}")
+        }
+    }
 
     override fun stopJob() {
         commanderScope.cancel()
@@ -256,7 +274,7 @@ class OBDCommander(
         }
     }
 
-    fun switchSource(source: Source) {
+    override fun switchSource(source: Source) {
         this.source = source
         resetStates()
         observeInput()
@@ -264,8 +282,35 @@ class OBDCommander(
     }
 
 
+    /**
+     *  SH: Header - address to whom we send command
+     * CRA: Receive address our listening device (7E8)
+     */
     fun configureForCanCommands() {
+
         //ATSH ATCRA
+    }
+
+    /**
+     * Use carefully, only if you sure in your command
+     */
+    override fun setSettingWithParameter(command: AtCommands, parameter: String){
+        checkSource()
+        cancelRepeteJobs()
+        workMode = WorkMode.SETTINGS
+        protocolManager.setSettingWithParameter(command, parameter)
+    }
+
+    /**
+     * Use carefully
+     * Protocol manager will automatically send all initial settings via protocol witch was chosen
+     * Settings can be configured manually by setSetting() or setSettingWithParameter()
+     */
+    override fun switchProtocol(protocol: Protocol){
+        checkSource()
+        cancelRepeteJobs()
+        workMode = WorkMode.PROTOCOL
+        protocolManager.switchProtocol(protocol)
     }
 
     private fun resetStates() {

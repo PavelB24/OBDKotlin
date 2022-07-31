@@ -1,7 +1,10 @@
 import kotlinx.coroutines.flow.MutableSharedFlow
+import main.commands.AtCommands
+import main.PidCommands
 import main.protocol.BaseProtocolManager
 import main.messages.Message
 import main.protocol.Protocol
+import main.source.Source
 
 abstract class BusCommander( protoManager: BaseProtocolManager) {
     /**
@@ -57,6 +60,10 @@ abstract class BusCommander( protoManager: BaseProtocolManager) {
     abstract val eventFlow: MutableSharedFlow<Message?>
 
     abstract fun tryProto(protocol: Protocol)
+    abstract fun switchSource(source: Source)
+    abstract fun switchProtocol(protocol: Protocol)
+    abstract fun setNewSetting(command: AtCommands)
+    abstract fun setSettingWithParameter(command: AtCommands, parameter: String)
 
 
     abstract suspend fun resetSettings()
@@ -67,7 +74,8 @@ abstract class BusCommander( protoManager: BaseProtocolManager) {
 
     abstract fun setCommand(command: String)
 
-    abstract fun setPinCommand(command: String)
+    abstract fun setCommand(command: PidCommands)
+
 
     abstract fun stopJob()
 

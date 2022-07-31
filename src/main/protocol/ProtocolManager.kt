@@ -1,17 +1,19 @@
 package main.protocol
 
-import AtCommands
+import main.commands.AtCommands
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import main.exceptions.ModsConflictException
-import main.OBDCommander
-import main.ProtocolManagerStrategy
 import main.exceptions.WrongMessageTypeException
 import main.messages.Message
 import main.messages.SelectedProtocolMessage
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class ProtocolManager: BaseProtocolManager() {
+
+    companion object {
+        const val ATTENTION_PREFIX = "AT"
+    }
 
 
     private var strategy: ProtocolManagerStrategy = ProtocolManagerStrategy.IDLE
@@ -25,8 +27,8 @@ class ProtocolManager: BaseProtocolManager() {
     )
 
     private val additionalCommandsSet: Set<AtCommands> = setOf(
-        AtCommands.AllowLongMessages, AtCommands.AutoFormatCanFramesOff,
-        AtCommands.FlowControlOff,
+        AtCommands.AllowLongMessages, AtCommands.FlowControlOff,
+        AtCommands.AutoFormatCanFramesOff, AtCommands.SetWakeUpMessagesOff
     )
 
 
@@ -47,33 +49,37 @@ class ProtocolManager: BaseProtocolManager() {
         }
     }
 
+    override suspend fun setSettingWithParameter(command: AtCommands, parameter: String) {
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${command.command}$parameter")
+    }
+
     private suspend fun setProto() {
         if (protocolQueue.isNotEmpty()) {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.SetProto}${protocolQueue.poll().hexOrdinal}")
+            _obdCommandFlow.emit("${ATTENTION_PREFIX}${AtCommands.SetProto}${protocolQueue.poll().hexOrdinal}")
         } else {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.SetProto}${Protocol.AUTOMATIC.hexOrdinal}")
+            _obdCommandFlow.emit("${ATTENTION_PREFIX}${AtCommands.SetProto}${Protocol.AUTOMATIC.hexOrdinal}")
         }
     }
 
-    private suspend fun skipProto() {
-        protocolQueue.poll()
-        tryProto()
-    }
 
     private suspend fun tryProto() {
         if (protocolQueue.isNotEmpty()) {
-            _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.TryProto}${protocolQueue.peek().hexOrdinal}")
+            _obdCommandFlow.emit("${ATTENTION_PREFIX}${AtCommands.TryProto}${protocolQueue.peek().hexOrdinal}")
         }
     }
 
     override suspend fun askObdProto() {  //Use only when we want set recommended proto
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
+    }
+
+    override suspend fun resetStates() {
+        strategy = ProtocolManagerStrategy.IDLE
     }
 
 
     //Set proto without try or checking results only after obd answer with hexNum of proto
     override suspend fun askCurrentProto() {
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${AtCommands.GetVehicleProtoAsNumber.command}")
     }
 
     override suspend fun onRestart(strategy: ProtocolManagerStrategy, protocol: Protocol?) {
@@ -83,18 +89,18 @@ class ProtocolManager: BaseProtocolManager() {
         this.strategy = strategy
         userProtocol = protocol
         prepare()
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${settingsQueue.poll().command}")
     }
 
     override suspend fun reset(){
         strategy = ProtocolManagerStrategy.IDLE
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${AtCommands.ResetAll.command}")
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${AtCommands.ResetAll.command}")
     }
 
     override fun isLastSettingSend(): Boolean = settingsQueue.isEmpty()
 
     override suspend fun sendNextSettings() {
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${settingsQueue.poll().command}")
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${settingsQueue.poll().command}")
     }
 
     private suspend fun prepare() {
@@ -112,22 +118,34 @@ class ProtocolManager: BaseProtocolManager() {
     }
 
     override suspend fun setSetting(command: AtCommands) {
-        _obdCommandFlow.emit("${OBDCommander.OBD_PREFIX}${command.command}")
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${command.command}")
+    }
+
+    override suspend fun switchProtocol(protocol: Protocol) {
+        _obdCommandFlow.emit("${ATTENTION_PREFIX}${protocol.hexOrdinal}")
     }
 
     @Throws(WrongMessageTypeException::class)
-    override fun checkIfCanProto(proto: Message): Boolean {
-        if (proto is SelectedProtocolMessage) {
-            val isCan = when (proto.protocol) {
+    override fun checkIfCanProto(message: Message): Boolean {
+        if (message is SelectedProtocolMessage) {
+            val specificOptions = mutableSetOf<AtCommands>()
+            val isCan = when (message.protocol) {
                 Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud -> { true }
                 Protocol.ISO_15765_4_CAN_29_bit_ID_500kbaud -> { true }
                 Protocol.ISO_15765_4_CAN_11_bit_ID_250kbaud -> { true }
                 Protocol.ISO_15765_4_CAN_29_bit_ID_250kbaud -> { true }
                 Protocol.SAE_J1939_CAN_29_bit_ID_250kbaud -> { true }
+                Protocol.ISO_14230_4_FASTINIT -> {
+                    specificOptions.add(AtCommands.FastInit)
+                    false
+                }
                 else -> false
             }
             if (isCan){
                 settingsQueue.addAll(additionalCommandsSet)
+            }
+            if(specificOptions.isNotEmpty()){
+                settingsQueue.addAll(specificOptions)
             }
             return isCan
         } else{

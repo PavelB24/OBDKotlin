@@ -1,51 +1,55 @@
+package main.commands
+
+import main.commands.PidMod
+
 enum class PidCommands(val hexCommand: String) {
 
-    SUPPORTED_PIDS0120("${PidMod.SHOW_CURRENT.hex} $pid00"),
-    SUPPORTED_PIDS2140("${PidMod.SHOW_CURRENT.hex} $pid20"),
-    SUPPORTED_PIDS4160("${PidMod.SHOW_CURRENT.hex} $pid40"),
-    SUPPORTED_PIDS6180("${PidMod.SHOW_CURRENT.hex} $pid60"),
-    GET_DETECTED_ERRORS("${PidMod.SHOW_CURRENT.hex} $pid02"),
-    STATUS_SINCE_DTC_CLEARED("${PidMod.SHOW_CURRENT.hex} $pid01"),
-    ENGINE_LOAD("${PidMod.SHOW_CURRENT.hex} $pid04"),
-    COOLANT_TEMPERATURE("${PidMod.SHOW_CURRENT.hex} $pid05"),
-    FUEL_PRESSURE("${PidMod.SHOW_CURRENT.hex} $pid0A"),
-    MAP_VAL("${PidMod.SHOW_CURRENT.hex} $pid0B"),
-    ENGINE_RPM("${PidMod.SHOW_CURRENT.hex} $pid0C"),
-    CAR_SPEED("${PidMod.SHOW_CURRENT.hex} $pid0D"),
-    TIMING_ADVANCE("${PidMod.SHOW_CURRENT.hex} $pid0E"),
-    MAP_AIR_FLOW("${PidMod.SHOW_CURRENT.hex} $pid10"),
-    INTAKE_AIR_TEMP("${PidMod.SHOW_CURRENT.hex} $pid0F"),
-    THROTTLE_POSITION("${PidMod.SHOW_CURRENT.hex} $pid11"),
-    HAS_OXYGEN_SENSORS("${PidMod.SHOW_CURRENT.hex} $pid13"),
-    ENGINE_RUN_TIME("${PidMod.SHOW_CURRENT.hex} $pid1F"),
-    CHECK_ENGINE_DISTANCE("${PidMod.SHOW_CURRENT.hex} $pid4D"),
-    CHECK_ENGINE_TIME("${PidMod.SHOW_CURRENT.hex} $pid21"),
-    FUEL_RAIL_PRESSURE("${PidMod.SHOW_CURRENT.hex} $pid23"), //Direct injection systems
-    FUEL_LEVEL("${PidMod.SHOW_CURRENT.hex} $pid2F"),
-    BAROMETRIC_PRESSURE("${PidMod.SHOW_CURRENT.hex} $pid33"),
-    EGR_ERROR("${PidMod.SHOW_CURRENT.hex} $pid2D"),
-    ABSOLUTE_LOAD("${PidMod.SHOW_CURRENT.hex} $pid43"),
-    AMBIENT_AIR_TEMP("${PidMod.SHOW_CURRENT.hex} $pid46"),
-    THROTTLE_B_POSITION("${PidMod.SHOW_CURRENT.hex} $pid47"),
-    THROTTLE_C_POSITION("${PidMod.SHOW_CURRENT.hex} $pid48"),
-    FUEL_TYPE("${PidMod.SHOW_CURRENT.hex} $pid52"),
+    SUPPORTED_PIDS0120("${PidMod.SHOW_CURRENT.hex}$pid00"),
+    SUPPORTED_PIDS2140("${PidMod.SHOW_CURRENT.hex}$pid20"),
+    SUPPORTED_PIDS4160("${PidMod.SHOW_CURRENT.hex}$pid40"),
+    SUPPORTED_PIDS6180("${PidMod.SHOW_CURRENT.hex}$pid60"),
+    GET_DETECTED_ERRORS("${PidMod.SHOW_CURRENT.hex}$pid02"),
+    STATUS_SINCE_DTC_CLEARED("${PidMod.SHOW_CURRENT.hex}$pid01"),
+    ENGINE_LOAD("${PidMod.SHOW_CURRENT.hex}$pid04"),
+    COOLANT_TEMPERATURE("${PidMod.SHOW_CURRENT.hex}$pid05"),
+    FUEL_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid0A"),
+    MAP_VAL("${PidMod.SHOW_CURRENT.hex}$pid0B"),
+    ENGINE_RPM("${PidMod.SHOW_CURRENT.hex}$pid0C"),
+    CAR_SPEED("${PidMod.SHOW_CURRENT.hex}$pid0D"),
+    TIMING_ADVANCE("${PidMod.SHOW_CURRENT.hex}$pid0E"),
+    MAP_AIR_FLOW("${PidMod.SHOW_CURRENT.hex}$pid10"),
+    INTAKE_AIR_TEMP("${PidMod.SHOW_CURRENT.hex}$pid0F"),
+    THROTTLE_POSITION("${PidMod.SHOW_CURRENT.hex}$pid11"),
+    HAS_OXYGEN_SENSORS("${PidMod.SHOW_CURRENT.hex}$pid13"),
+    ENGINE_RUN_TIME("${PidMod.SHOW_CURRENT.hex}$pid1F"),
+    CHECK_ENGINE_DISTANCE("${PidMod.SHOW_CURRENT.hex}$pid4D"),
+    CHECK_ENGINE_TIME("${PidMod.SHOW_CURRENT.hex}$pid21"),
+    FUEL_RAIL_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid23"), //Direct injection systems
+    FUEL_LEVEL("${PidMod.SHOW_CURRENT.hex}$pid2F"),
+    BAROMETRIC_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid33"),
+    EGR_ERROR("${PidMod.SHOW_CURRENT.hex}$pid2D"),
+    ABSOLUTE_LOAD("${PidMod.SHOW_CURRENT.hex}$pid43"),
+    AMBIENT_AIR_TEMP("${PidMod.SHOW_CURRENT.hex}$pid46"),
+    THROTTLE_B_POSITION("${PidMod.SHOW_CURRENT.hex}$pid47"),
+    THROTTLE_C_POSITION("${PidMod.SHOW_CURRENT.hex}$pid48"),
+    FUEL_TYPE("${PidMod.SHOW_CURRENT.hex}$pid52"),
     STORED_ERRORS_CODES(PidMod.SHOW_DIAGNOSTIC_TROUBLES_CODES.hex),
     CLEAR_ERRORS(PidMod.CLEAR_TROUBLES_CODES_AND_STORE_VAL.hex),
-    GET_CIN("${PidMod.VEHICLE_INFO_REQUEST.hex} $pid02"),
-    GET_ECU_NAME_MESSAGE_COUNT("${PidMod.VEHICLE_INFO_REQUEST.hex} $pid09"),
-    GET_ECU_NAME("${PidMod.VEHICLE_INFO_REQUEST.hex} $pid0A"),
-    ACCELERATION_PEDAL_POSITION("${PidMod.SHOW_CURRENT.hex} $pid5A"),
-    HYBRID_REMAINING_BAT_LIFE("${PidMod.SHOW_CURRENT.hex} $pid5B"),
-    ENGINE_OIL_TEMP("${PidMod.SHOW_CURRENT.hex} $pid5C"),
-    FUEL_INJECTION_TIMING("${PidMod.SHOW_CURRENT.hex} $pid93"),
-    FUEL_RATE("${PidMod.SHOW_CURRENT.hex} $pid94"), // Расход топлива
-    ACTUAL_ENGINE_TORQUE("${PidMod.SHOW_CURRENT} $pid62"), //Тяга мотора в %
-    ENGINE_TORQUE_DATA("${PidMod.SHOW_CURRENT.hex} $pid64"), //Тяга мотора в % by abcd points
-    ENGINE_TORQUE_NM("${PidMod.SHOW_CURRENT.hex} $pid63"),
-    TURBOCHARGER_RPM("${PidMod.SHOW_CURRENT.hex} $pid74"),
-    TURBOCHARGER_1_TEMP("${PidMod.SHOW_CURRENT.hex} $pid75"),
-    TURBOCHARGER_2_RPM("${PidMod.SHOW_CURRENT.hex} $pid76"),
-    DPF_TEMP("${PidMod.SHOW_CURRENT.hex} $pid7C"), //Дизельный фильтр, температура
+    GET_CIN("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid02"),
+    GET_ECU_NAME_MESSAGE_COUNT("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid09"),
+    GET_ECU_NAME("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid0A"),
+    ACCELERATION_PEDAL_POSITION("${PidMod.SHOW_CURRENT.hex}$pid5A"),
+    HYBRID_REMAINING_BAT_LIFE("${PidMod.SHOW_CURRENT.hex}$pid5B"),
+    ENGINE_OIL_TEMP("${PidMod.SHOW_CURRENT.hex}$pid5C"),
+    FUEL_INJECTION_TIMING("${PidMod.SHOW_CURRENT.hex}$pid93"),
+    FUEL_RATE("${PidMod.SHOW_CURRENT.hex}$pid94"), // Расход топлива
+    ACTUAL_ENGINE_TORQUE("${PidMod.SHOW_CURRENT}$pid62"), //Тяга мотора в %
+    ENGINE_TORQUE_DATA("${PidMod.SHOW_CURRENT.hex}$pid64"), //Тяга мотора в % by abcd points
+    ENGINE_TORQUE_NM("${PidMod.SHOW_CURRENT.hex}$pid63"),
+    TURBOCHARGER_RPM("${PidMod.SHOW_CURRENT.hex}$pid74"),
+    TURBOCHARGER_1_TEMP("${PidMod.SHOW_CURRENT.hex}$pid75"),
+    TURBOCHARGER_2_RPM("${PidMod.SHOW_CURRENT.hex}$pid76"),
+    DPF_TEMP("${PidMod.SHOW_CURRENT.hex}$pid7C"), //Дизельный фильтр, температура
 
 
 }
