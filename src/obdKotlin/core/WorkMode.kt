@@ -1,4 +1,4 @@
-package obdKotlin
+package obdKotlin.core
 
 enum class WorkMode {
     IDLE,  //IDLE on Start
