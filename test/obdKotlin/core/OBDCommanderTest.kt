@@ -1,6 +1,5 @@
 package obdKotlin.core
 
-import obdKotlin.WorkMode
 import obdKotlin.commands.Commands
 import obdKotlin.protocol.Protocol
 import obdKotlin.protocol.ProtocolManager

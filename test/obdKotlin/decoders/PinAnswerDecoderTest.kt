@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import obdKotlin.WorkMode
+import obdKotlin.core.WorkMode
 import org.junit.Test
 
 import org.junit.Assert.*

@@ -1,10 +1,11 @@
+@file:Suppress("unused")
+
 package obdKotlin.commands
 
 const val AT_PREFIX = "AT"
 const val POSTFIX = "\r"
 
-
-abstract class Commands {
+internal abstract class Commands {
     enum class PidMod(val hex: String, val positiveCode: String) {
 
         SHOW_CURRENT("01", "41"),
@@ -22,27 +23,45 @@ abstract class Commands {
 
     enum class AtCommands(val command: String) {
 
+
+
+
         Repeat(POSTFIX), //Repeat last command
-        SetBaudRateDivisor("${AT_PREFIX}BRD"),
-        Defaults("${AT_PREFIX}D"), //Set All to Defaults
         EchoOff("${AT_PREFIX}E0"), //Set Echo Off
-        EchoOn("${AT_PREFIX}E1"), //Set Echo on
-        ForgetEvents("${AT_PREFIX}FE"), //ForgetEvents
-        PrintId("${AT_PREFIX}I"), //PrintVersionId
-        LineFeedsOn("${AT_PREFIX}L1"),
-        LineFeedsOff("${AT_PREFIX}L0"),
-        LowPowerMode("${AT_PREFIX}LP"),
-        MemoryOff("${AT_PREFIX}M0"),
-        MemoryOn("${AT_PREFIX}M1"),
-        ReadStoredData(""),
-        SaveDataByte(""),
-        WarmStart("${AT_PREFIX}WS"),
-        DisplayTheDeviceDescription("${AT_PREFIX}@1"),
-        DisplayVIN("${AT_PREFIX}@2"),
-        StoreTheVIN("${AT_PREFIX}@3"),
         ResetAll("${AT_PREFIX}Z"),
         SetWakeUpMessagesOff("${AT_PREFIX}SW"),
         FastInit("${AT_PREFIX}FI"),
+        AllowLongMessages("${AT_PREFIX}AL"),
+        GetVehicleProtoAsNumber("${AT_PREFIX}DPN"),
+        PrintingSpacesOff("${AT_PREFIX}S0"),
+        SetHeader("${AT_PREFIX}SH"),
+        SetProto("${AT_PREFIX}SP"),
+        TryProto("${AT_PREFIX}TR"),
+        CanExtAdr("${AT_PREFIX}CAE"), // Just CAE to turn off, use CAE hh for turn on
+        FlowControlOff("${AT_PREFIX}CFC0"),
+        FlowControlOn("${AT_PREFIX}CFC1"),
+        SetReceiverAdrFilter("${AT_PREFIX}CRA"), //Just CRA for reset or hhh or hhhhhhhh for set
+        AdaptiveTimingOn("${AT_PREFIX}AT1"),
+        AutoFormatCanFramesOff("${AT_PREFIX}CAF0"),
+        WarmStart("${AT_PREFIX}WS")
+//        SetBaudRateDivisor("${AT_PREFIX}BRD"),
+//        Defaults("${AT_PREFIX}D"), //Set All to Defaults
+
+//        EchoOn("${AT_PREFIX}E1"), //Set Echo on
+//        ForgetEvents("${AT_PREFIX}FE"), //ForgetEvents
+//        PrintId("${AT_PREFIX}I"), //PrintVersionId
+//        LineFeedsOn("${AT_PREFIX}L1"),
+//        LineFeedsOff("${AT_PREFIX}L0"),
+//        LowPowerMode("${AT_PREFIX}LP"),
+//        MemoryOff("${AT_PREFIX}M0"),
+//        MemoryOn("${AT_PREFIX}M1"),
+//        ReadStoredData(""),
+//        SaveDataByte(""),
+
+//        DisplayTheDeviceDescription("${AT_PREFIX}@1"),
+//        DisplayVIN("${AT_PREFIX}@2"),
+//        StoreTheVIN("${AT_PREFIX}@3"),
+
 
         /**
          * Здесь мы указываем, что elm в качастве фрейма fc всегда будет сообщать ЭБУ, что тот может посылать
@@ -51,111 +70,109 @@ abstract class Commands {
          * только один, первый фрейм.
          * Принимающая сторона должна послать фрейм fc, в котором сообщает как слать оставшиеся фреймы.
          */
-        SetTimeOutToMax("${AT_PREFIX}FCSD300000"), //
-        ReadVoltage("${AT_PREFIX}RV"),
-        AllowLongMessages("${AT_PREFIX}AL"),
-        GetActiveMonitors("${AT_PREFIX}AMC"),
-        AutoReceive("${AT_PREFIX}AR"),
-        GetReceivedBytes("${AT_PREFIX}BD"),
-        GetCurrentProto("${AT_PREFIX}DP"),
-        GetVehicleProtoAsNumber("${AT_PREFIX}DPN"),
-        HeadersOn("${AT_PREFIX}H1"),
-        HeadersOff("${AT_PREFIX}H0"),
-        MonitorAll("${AT_PREFIX}MA"),
-        CloseCurrentProto("${AT_PREFIX}PC"),
-        ResponsesOff("${AT_PREFIX}R0"),
-        ResponsesOn("${AT_PREFIX}R1"),
-        PrintingSpacesOff("${AT_PREFIX}S0"),
-        PrintingSpacesOn("${AT_PREFIX}S1"),
-        SetHeader("${AT_PREFIX}SH"),
-        SetProto("${AT_PREFIX}SP"),
-        SetProtoAndAutoSearch("${AT_PREFIX}SPA"),
-        SetReceiverAddress("${AT_PREFIX}SR"),
-        UseStandardSearchOrder("${AT_PREFIX}SS"),
-        TryProto("${AT_PREFIX}TR"),
-        TryWithAutoSearch("${AT_PREFIX}TRA"),
-        EraseStoredProto("${AT_PREFIX}SP00"),
+//        SetTimeOutToMax("${AT_PREFIX}FCSD300000"), //
+//        ReadVoltage("${AT_PREFIX}RV"),
+
+//        GetActiveMonitors("${AT_PREFIX}AMC"),
+//        AutoReceive("${AT_PREFIX}AR"),
+//        GetReceivedBytes("${AT_PREFIX}BD"),
+//        GetCurrentProto("${AT_PREFIX}DP"),
+
+//        HeadersOn("${AT_PREFIX}H1"),
+//        HeadersOff("${AT_PREFIX}H0"),
+//        MonitorAll("${AT_PREFIX}MA"),
+//        CloseCurrentProto("${AT_PREFIX}PC"),
+//        ResponsesOff("${AT_PREFIX}R0"),
+//        ResponsesOn("${AT_PREFIX}R1"),
+
+//        PrintingSpacesOn("${AT_PREFIX}S1"),
+
+//        SetProtoAndAutoSearch("${AT_PREFIX}SPA"),
+//        SetReceiverAddress("${AT_PREFIX}SR"),
+//        UseStandardSearchOrder("${AT_PREFIX}SS"),
+
+//        TryWithAutoSearch("${AT_PREFIX}TRA"),
+//        EraseStoredProto("${AT_PREFIX}SP00"),
 
 
-        PerformFastInit("${AT_PREFIX}FI"),
-        SetIsoBaud("${AT_PREFIX}IB"),
-        DisplayDLCOn("${AT_PREFIX}D1"),
-        DisplayDLCOff("${AT_PREFIX}D0"),
-        SetFlowControlMode("${AT_PREFIX}FCSM"),
-        SetFlowControlHeader("${AT_PREFIX}FCSH"),
-        FlowControlSetDataTo("${AT_PREFIX}FCSD"),
-        SentRTRMsg("${AT_PREFIX}RTR"),
-        UseVarDLCOn("${AT_PREFIX}V1"),
-        UseVarDLCOff("${AT_PREFIX}V0"),
+//        PerformFastInit("${AT_PREFIX}FI"),
+//        SetIsoBaud("${AT_PREFIX}IB"),
+//        DisplayDLCOn("${AT_PREFIX}D1"),
+//        DisplayDLCOff("${AT_PREFIX}D0"),
+//        SetFlowControlMode("${AT_PREFIX}FCSM"),
+//        SetFlowControlHeader("${AT_PREFIX}FCSH"),
+//        FlowControlSetDataTo("${AT_PREFIX}FCSD"),
+//        SentRTRMsg("${AT_PREFIX}RTR"),
+//        UseVarDLCOn("${AT_PREFIX}V1"),
+//        UseVarDLCOff("${AT_PREFIX}V0"),
 
-        CanExtAdr("${AT_PREFIX}CAE"), // Just CAE to turn off, use CAE hh for turn on
-        SetCanIdFilter("${AT_PREFIX}CF"), //hhh or hhhhhhhh
-        FlowControlOn("${AT_PREFIX}CFC1"),
-        FlowControlOff("${AT_PREFIX}CFC0"),
-        SetReceiverAdrFilter("${AT_PREFIX}CRA"), //Just CRA for reset or hhh or hhhhhhhh for set
-        GetCanStatusCount("${AT_PREFIX}CS"),
-        ClientMonitoringOff("${AT_PREFIX}CSM0"),
-        ClientMonitoringOn("${AT_PREFIX}CSM1"),
-        SetIdMask("${AT_PREFIX}CM"), //hhh hhhhhhhh
-        AdaptiveTimingOn("${AT_PREFIX}AT1"),
-        AdaptiveTimingOff("${AT_PREFIX}AT0"),
-        AutoFormatCanFramesOn("${AT_PREFIX}CAF1"),
-        AutoFormatCanFramesOff("${AT_PREFIX}CAF0")
+
+//        SetCanIdFilter("${AT_PREFIX}CF"), //hhh or hhhhhhhh
+//        FlowControlOn("${AT_PREFIX}CFC1"),
+
+//        GetCanStatusCount("${AT_PREFIX}CS"),
+//        ClientMonitoringOff("${AT_PREFIX}CSM0"),
+//        ClientMonitoringOn("${AT_PREFIX}CSM1"),
+//        SetIdMask("${AT_PREFIX}CM"), //hhh hhhhhhhh
+
+//        AdaptiveTimingOff("${AT_PREFIX}AT0"),
+//        AutoFormatCanFramesOn("${AT_PREFIX}CAF1"),
+
 
 
     }
 
-    enum class PidCommands(val hexCommand: String) {
-
-        SUPPORTED_PIDS0120("${PidMod.SHOW_CURRENT.hex}$pid00$POSTFIX"),
-        SUPPORTED_PIDS2140("${PidMod.SHOW_CURRENT.hex}$pid20$POSTFIX"),
-        SUPPORTED_PIDS4160("${PidMod.SHOW_CURRENT.hex}$pid40$POSTFIX"),
-        SUPPORTED_PIDS6180("${PidMod.SHOW_CURRENT.hex}$pid60$POSTFIX"),
-        GET_DETECTED_ERRORS("${PidMod.SHOW_CURRENT.hex}$pid02$POSTFIX"),
-        STATUS_SINCE_DTC_CLEARED("${PidMod.SHOW_CURRENT.hex}$pid01$POSTFIX"),
-        ENGINE_LOAD("${PidMod.SHOW_CURRENT.hex}$pid04$POSTFIX"),
-        COOLANT_TEMPERATURE("${PidMod.SHOW_CURRENT.hex}$pid05$POSTFIX"),
-        FUEL_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid0A$POSTFIX"),
-        MAP_VAL("${PidMod.SHOW_CURRENT.hex}$pid0B$POSTFIX"),
-        ENGINE_RPM("${PidMod.SHOW_CURRENT.hex}$pid0C$POSTFIX"),
-        CAR_SPEED("${PidMod.SHOW_CURRENT.hex}$pid0D$POSTFIX"),
-        TIMING_ADVANCE("${PidMod.SHOW_CURRENT.hex}$pid0E$POSTFIX"),
-        MAP_AIR_FLOW("${PidMod.SHOW_CURRENT.hex}$pid10$POSTFIX"),
-        INTAKE_AIR_TEMP("${PidMod.SHOW_CURRENT.hex}$pid0F$POSTFIX"),
-        THROTTLE_POSITION("${PidMod.SHOW_CURRENT.hex}$pid11$POSTFIX"),
-        HAS_OXYGEN_SENSORS("${PidMod.SHOW_CURRENT.hex}$pid13$POSTFIX"),
-        ENGINE_RUN_TIME("${PidMod.SHOW_CURRENT.hex}$pid1F$POSTFIX"),
-        CHECK_ENGINE_DISTANCE("${PidMod.SHOW_CURRENT.hex}$pid4D$POSTFIX"),
-        CHECK_ENGINE_TIME("${PidMod.SHOW_CURRENT.hex}$pid21$POSTFIX"),
-        FUEL_RAIL_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid23$POSTFIX"), //Direct injection systems
-        FUEL_LEVEL("${PidMod.SHOW_CURRENT.hex}$pid2F$POSTFIX"),
-        BAROMETRIC_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid33$POSTFIX"),
-        EGR_ERROR("${PidMod.SHOW_CURRENT.hex}$pid2D$POSTFIX"),
-        ABSOLUTE_LOAD("${PidMod.SHOW_CURRENT.hex}$pid43$POSTFIX"),
-        AMBIENT_AIR_TEMP("${PidMod.SHOW_CURRENT.hex}$pid46$POSTFIX"),
-        THROTTLE_B_POSITION("${PidMod.SHOW_CURRENT.hex}$pid47$POSTFIX"),
-        THROTTLE_C_POSITION("${PidMod.SHOW_CURRENT.hex}$pid48$POSTFIX"),
-        FUEL_TYPE("${PidMod.SHOW_CURRENT.hex}$pid52$POSTFIX"),
-        STORED_ERRORS_CODES("${PidMod.SHOW_DIAGNOSTIC_TROUBLES_CODES.hex}$POSTFIX"),
-        CLEAR_ERRORS("${PidMod.CLEAR_TROUBLES_CODES_AND_STORE_VAL.hex}$POSTFIX"),
-        GET_CIN("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid02$POSTFIX"),
-        GET_ECU_NAME_MESSAGE_COUNT("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid09$POSTFIX"),
-        GET_ECU_NAME("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid0A$POSTFIX"),
-        ACCELERATION_PEDAL_POSITION("${PidMod.SHOW_CURRENT.hex}$pid5A$POSTFIX"),
-        HYBRID_REMAINING_BAT_LIFE("${PidMod.SHOW_CURRENT.hex}$pid5B$POSTFIX"),
-        ENGINE_OIL_TEMP("${PidMod.SHOW_CURRENT.hex}$pid5C$POSTFIX"),
-        FUEL_INJECTION_TIMING("${PidMod.SHOW_CURRENT.hex}$pid93$POSTFIX"),
-        FUEL_RATE("${PidMod.SHOW_CURRENT.hex}$pid94$POSTFIX"), // Расход топлива
-        ACTUAL_ENGINE_TORQUE("${PidMod.SHOW_CURRENT}$pid62$POSTFIX"), //Тяга мотора в %
-        ENGINE_TORQUE_DATA("${PidMod.SHOW_CURRENT.hex}$pid64$POSTFIX"), //Тяга мотора в % by abcd points
-        ENGINE_TORQUE_NM("${PidMod.SHOW_CURRENT.hex}$pid63$POSTFIX"),
-        TURBOCHARGER_RPM("${PidMod.SHOW_CURRENT.hex}$pid74$POSTFIX"),
-        TURBOCHARGER_1_TEMP("${PidMod.SHOW_CURRENT.hex}$pid75$POSTFIX"),
-        TURBOCHARGER_2_RPM("${PidMod.SHOW_CURRENT.hex}$pid76$POSTFIX"),
-        DPF_TEMP("${PidMod.SHOW_CURRENT.hex}$pid7C$POSTFIX"); //Дизельный фильтр, температура
-
-
-    }
+//    enum class PidCommands(val hexCommand: String) {
+//
+//        SUPPORTED_PIDS0120("${PidMod.SHOW_CURRENT.hex}$pid00$POSTFIX"),
+//        SUPPORTED_PIDS2140("${PidMod.SHOW_CURRENT.hex}$pid20$POSTFIX"),
+//        SUPPORTED_PIDS4160("${PidMod.SHOW_CURRENT.hex}$pid40$POSTFIX"),
+//        SUPPORTED_PIDS6180("${PidMod.SHOW_CURRENT.hex}$pid60$POSTFIX"),
+//        GET_DETECTED_ERRORS("${PidMod.SHOW_CURRENT.hex}$pid02$POSTFIX"),
+//        STATUS_SINCE_DTC_CLEARED("${PidMod.SHOW_CURRENT.hex}$pid01$POSTFIX"),
+//        ENGINE_LOAD("${PidMod.SHOW_CURRENT.hex}$pid04$POSTFIX"),
+//        COOLANT_TEMPERATURE("${PidMod.SHOW_CURRENT.hex}$pid05$POSTFIX"),
+//        FUEL_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid0A$POSTFIX"),
+//        MAP_VAL("${PidMod.SHOW_CURRENT.hex}$pid0B$POSTFIX"),
+//        ENGINE_RPM("${PidMod.SHOW_CURRENT.hex}$pid0C$POSTFIX"),
+//        CAR_SPEED("${PidMod.SHOW_CURRENT.hex}$pid0D$POSTFIX"),
+//        TIMING_ADVANCE("${PidMod.SHOW_CURRENT.hex}$pid0E$POSTFIX"),
+//        MAP_AIR_FLOW("${PidMod.SHOW_CURRENT.hex}$pid10$POSTFIX"),
+//        INTAKE_AIR_TEMP("${PidMod.SHOW_CURRENT.hex}$pid0F$POSTFIX"),
+//        THROTTLE_POSITION("${PidMod.SHOW_CURRENT.hex}$pid11$POSTFIX"),
+//        HAS_OXYGEN_SENSORS("${PidMod.SHOW_CURRENT.hex}$pid13$POSTFIX"),
+//        ENGINE_RUN_TIME("${PidMod.SHOW_CURRENT.hex}$pid1F$POSTFIX"),
+//        CHECK_ENGINE_DISTANCE("${PidMod.SHOW_CURRENT.hex}$pid4D$POSTFIX"),
+//        CHECK_ENGINE_TIME("${PidMod.SHOW_CURRENT.hex}$pid21$POSTFIX"),
+//        FUEL_RAIL_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid23$POSTFIX"), //Direct injection systems
+//        FUEL_LEVEL("${PidMod.SHOW_CURRENT.hex}$pid2F$POSTFIX"),
+//        BAROMETRIC_PRESSURE("${PidMod.SHOW_CURRENT.hex}$pid33$POSTFIX"),
+//        EGR_ERROR("${PidMod.SHOW_CURRENT.hex}$pid2D$POSTFIX"),
+//        ABSOLUTE_LOAD("${PidMod.SHOW_CURRENT.hex}$pid43$POSTFIX"),
+//        AMBIENT_AIR_TEMP("${PidMod.SHOW_CURRENT.hex}$pid46$POSTFIX"),
+//        THROTTLE_B_POSITION("${PidMod.SHOW_CURRENT.hex}$pid47$POSTFIX"),
+//        THROTTLE_C_POSITION("${PidMod.SHOW_CURRENT.hex}$pid48$POSTFIX"),
+//        FUEL_TYPE("${PidMod.SHOW_CURRENT.hex}$pid52$POSTFIX"),
+//        STORED_ERRORS_CODES("${PidMod.SHOW_DIAGNOSTIC_TROUBLES_CODES.hex}$POSTFIX"),
+//        CLEAR_ERRORS("${PidMod.CLEAR_TROUBLES_CODES_AND_STORE_VAL.hex}$POSTFIX"),
+//        GET_CIN("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid02$POSTFIX"),
+//        GET_ECU_NAME_MESSAGE_COUNT("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid09$POSTFIX"),
+//        GET_ECU_NAME("${PidMod.VEHICLE_INFO_REQUEST.hex}$pid0A$POSTFIX"),
+//        ACCELERATION_PEDAL_POSITION("${PidMod.SHOW_CURRENT.hex}$pid5A$POSTFIX"),
+//        HYBRID_REMAINING_BAT_LIFE("${PidMod.SHOW_CURRENT.hex}$pid5B$POSTFIX"),
+//        ENGINE_OIL_TEMP("${PidMod.SHOW_CURRENT.hex}$pid5C$POSTFIX"),
+//        FUEL_INJECTION_TIMING("${PidMod.SHOW_CURRENT.hex}$pid93$POSTFIX"),
+//        FUEL_RATE("${PidMod.SHOW_CURRENT.hex}$pid94$POSTFIX"), // Расход топлива
+//        ACTUAL_ENGINE_TORQUE("${PidMod.SHOW_CURRENT}$pid62$POSTFIX"), //Тяга мотора в %
+//        ENGINE_TORQUE_DATA("${PidMod.SHOW_CURRENT.hex}$pid64$POSTFIX"), //Тяга мотора в % by abcd points
+//        ENGINE_TORQUE_NM("${PidMod.SHOW_CURRENT.hex}$pid63$POSTFIX"),
+//        TURBOCHARGER_RPM("${PidMod.SHOW_CURRENT.hex}$pid74$POSTFIX"),
+//        TURBOCHARGER_1_TEMP("${PidMod.SHOW_CURRENT.hex}$pid75$POSTFIX"),
+//        TURBOCHARGER_2_RPM("${PidMod.SHOW_CURRENT.hex}$pid76$POSTFIX"),
+//        DPF_TEMP("${PidMod.SHOW_CURRENT.hex}$pid7C$POSTFIX"); //Дизельный фильтр, температура
+//
+//
+//    }
 
 
 }

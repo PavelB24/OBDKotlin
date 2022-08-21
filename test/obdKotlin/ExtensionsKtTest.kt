@@ -8,7 +8,8 @@ class ExtensionsKtTest {
 
     @Test
     fun toBinaryArray() {
-
+        val bytes = byteArrayOf(41, 10, 14, 12).toUByteArray().toBinaryArray()
+        assertEquals(32, bytes.size)
     }
 
     @Test

@@ -2,7 +2,6 @@ package obdKotlin.protocol
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import org.junit.Test
 
@@ -52,7 +51,7 @@ class ProtocolManagerTest {
     @Test
     fun onRestart() {
         CoroutineScope(Dispatchers.IO).launch {
-            manager.onRestart(ProtocolManagerStrategy.AUTO)
+            manager.onRestart(ProtocolManagerStrategy.AUTO,)
         }
 
     }

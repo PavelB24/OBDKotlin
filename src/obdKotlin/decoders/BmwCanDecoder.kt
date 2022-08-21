@@ -1,7 +1,7 @@
 package obdKotlin.decoders
 
 import kotlinx.coroutines.flow.MutableSharedFlow
-import obdKotlin.WorkMode
+import obdKotlin.core.WorkMode
 import obdKotlin.messages.Message
 
 class BmwCanDecoder(private val eventFlow: MutableSharedFlow<Message?>): PinAnswerDecoder(eventFlow) {

@@ -3,13 +3,11 @@ package obdKotlin.protocol
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import obdKotlin.core.WorkMode
+import obdKotlin.commands.AT_PREFIX
 import obdKotlin.commands.Commands
 import obdKotlin.commands.POSTFIX
 import obdKotlin.exceptions.ModsConflictException
-import obdKotlin.exceptions.WrongMessageTypeException
-import obdKotlin.messages.CommonMessages
-import obdKotlin.messages.Message
-import obdKotlin.profiles.CustomProfile
 import obdKotlin.profiles.Profile
 import java.lang.IllegalStateException
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -31,30 +29,44 @@ internal class ProtocolManager : BaseProtocolManager() {
 
         )
 
-    private val additionalCommandsSet: Set<String> = setOf(
+    private val canOnCommandsSet: Set<String> = setOf(
         "${Commands.AtCommands.FlowControlOff.command}$POSTFIX",
-        "${Commands.AtCommands.AutoFormatCanFramesOff.command}$POSTFIX",
-        "${Commands.AtCommands.SetWakeUpMessagesOff.command}$POSTFIX"
+//        "${Commands.AtCommands.AutoFormatCanFramesOff.command}$POSTFIX",
+//        "${Commands.AtCommands.SetWakeUpMessagesOff.command}$POSTFIX"
+    )
+
+    private val canOffCommandsSet = setOf<String>(
+        "${Commands.AtCommands.FlowControlOn}$POSTFIX",
     )
 
     private var userProtocol: Protocol? = null
     private val settingsQueue = ConcurrentLinkedQueue<String>()
 
 
+    override suspend fun switchToStandardMode(extra: List<String>?){
+        val isQueueEmpty = settingsQueue.isEmpty()
+        settingsQueue.addAll(canOffCommandsSet)
+        extra?.let{
+            it.forEach {command->
+                settingsQueue.add("$AT_PREFIX${command.replace(" ", "")}$POSTFIX")
+            }
+        }
+        if(isQueueEmpty){
+            _obdCommandFlow.emit(settingsQueue.poll())
+        }
+    }
+
+
     @Throws(IllegalStateException::class)
     override suspend fun handleAnswer() {
         strategy?.let {
-            when (strategy) {
+            when (it) {
                 ProtocolManagerStrategy.TRY -> tryProto()
                 ProtocolManagerStrategy.SET -> setProto()
                 ProtocolManagerStrategy.AUTO -> setProto()
             }
         }
 
-    }
-
-    override suspend fun setSettingWithParameter(command: Commands.AtCommands, parameter: String) {
-        _obdCommandFlow.emit("${command.command}$parameter$POSTFIX")
     }
 
     private suspend fun setProto() {
@@ -86,57 +98,68 @@ internal class ProtocolManager : BaseProtocolManager() {
         _obdCommandFlow.emit("${Commands.AtCommands.GetVehicleProtoAsNumber.command}$POSTFIX")
     }
 
-    override suspend fun onRestart(strategy: ProtocolManagerStrategy, protocol: Protocol?, extra: List<String>?) {
+    override suspend fun onRestart(
+        strategy: ProtocolManagerStrategy,
+        warmStart: Boolean,
+        protocol: Protocol?,
+        extra: List<String>?
+    ) {
         this.strategy = strategy
         userProtocol = protocol
+        val isQueue = settingsQueue.isEmpty()
         prepare(extra)
-        _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}$POSTFIX")
+        if (isQueue) {
+            val command = if (warmStart) Commands.AtCommands.WarmStart else Commands.AtCommands.ResetAll.command
+            _obdCommandFlow.emit("$command$POSTFIX")
+        }
     }
 
-    override suspend fun setHeaderAndReceiver(headerAddress: String, receiverAddress: String, isAlreadyCan: Boolean) {
+    override suspend fun setHeaderAndReceiver(
+        headerAddress: String,
+        receiverAddress: String?,
+        isAlreadyCan: Boolean,
+        extra: List<String>?
+    ) {
         if (!isAlreadyCan) {
-            settingsQueue.addAll(additionalCommandsSet)
+            settingsQueue.addAll(canOnCommandsSet)
         }
+        val isQueueEmpty = settingsQueue.isEmpty()
         settingsQueue.add("${Commands.AtCommands.SetHeader.command}$headerAddress$POSTFIX")
-        settingsQueue.add("${Commands.AtCommands.SetReceiverAdrFilter.command}$receiverAddress$POSTFIX")
-        sendNextSettings()
+        receiverAddress?.let {
+            settingsQueue.add("${Commands.AtCommands.SetReceiverAdrFilter.command}$it$POSTFIX")
+        }
+        extra?.let{
+            it.forEach {command->
+                settingsQueue.add("$AT_PREFIX${command.replace(" ", "")}$POSTFIX")
+            }
+        }
+        if (isQueueEmpty) {
+            sendNextSettings()
+        }
     }
+
 
     override suspend fun startWithProfile(profile: Profile) {
         strategy = ProtocolManagerStrategy.SET
-        userProtocol = profile.protocol
-        profile.settings.forEach {
-            if (it.second == null) {
-                settingsQueue.add("${it.first}$POSTFIX")
-            } else {
-                settingsQueue.add("${it.first}${it.second}$POSTFIX")
-            }
-        }
-        _obdCommandFlow.emit(Commands.AtCommands.ResetAll.command)
-    }
-
-    override suspend fun startWithProfile(profile: CustomProfile) {
-        strategy = ProtocolManagerStrategy.SET
         settingsQueue.addAll(standardSettingsSet)
         profile.settingsAndParams.forEach {
-            if (it.second == null) {
-                settingsQueue.add("${it.first}")
-            } else {
-                settingsQueue.add("${it.first}${it.second}")
-            }
+           settingsQueue.add(it)
         }
-        _obdCommandFlow.emit(Commands.AtCommands.ResetAll.command)
+        _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}$POSTFIX")
     }
 
     override suspend fun resetSession() {
         strategy = null
-        _obdCommandFlow.emit(Commands.AtCommands.ResetAll.command)
+        _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}$POSTFIX")
     }
 
-    override fun isLastSettingSend(): Boolean = settingsQueue.isEmpty()
+    override fun isQueueEmpty(): Boolean = settingsQueue.isEmpty()
 
     override suspend fun sendNextSettings() {
-        _obdCommandFlow.emit(settingsQueue.poll())
+        settingsQueue.poll()
+        if (!isQueueEmpty()) {
+            _obdCommandFlow.emit(settingsQueue.peek())
+        }
     }
 
     /**
@@ -161,44 +184,18 @@ internal class ProtocolManager : BaseProtocolManager() {
         }
     }
 
-    override suspend fun setSetting(command: Commands.AtCommands) {
-        _obdCommandFlow.emit("${command.command}$POSTFIX")
+    override suspend fun setSetting(command: String, workMode: WorkMode) {
+        val handledCommand = "$AT_PREFIX$command$POSTFIX"
+        if (workMode == WorkMode.SETTINGS && !isQueueEmpty()){
+            settingsQueue.add(handledCommand)
+        }
+        _obdCommandFlow.emit(handledCommand)
     }
 
     override suspend fun switchProtocol(protocol: Protocol) {
         _obdCommandFlow.emit("${Commands.AtCommands.SetProto}${protocol.hexOrdinal}$POSTFIX")
     }
 
-    @Throws(WrongMessageTypeException::class)
-    override fun checkIfCanProto(message: Message): Boolean {
-        if (message is CommonMessages.SelectedProtocolMessage) {
-            return when (message.protocol) {
-                Protocol.ISO_15765_4_CAN_11_bit_ID_500kbaud -> {
-                    true
-                }
-
-                Protocol.ISO_15765_4_CAN_29_bit_ID_500kbaud -> {
-                    true
-                }
-
-                Protocol.ISO_15765_4_CAN_11_bit_ID_250kbaud -> {
-                    true
-                }
-
-                Protocol.ISO_15765_4_CAN_29_bit_ID_250kbaud -> {
-                    true
-                }
-
-                Protocol.SAE_J1939_CAN_29_bit_ID_250kbaud -> {
-                    true
-                }
-
-                else -> false
-            }
-        } else {
-            throw WrongMessageTypeException("SelectedProtocolMessage should be provided")
-        }
-    }
 
 
 }

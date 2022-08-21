@@ -2,10 +2,9 @@ package obdKotlin.decoders
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
-import obdKotlin.WorkMode
+import obdKotlin.core.WorkMode
 
 import org.junit.Assert.*
 import org.junit.Test

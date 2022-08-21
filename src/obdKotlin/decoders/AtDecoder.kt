@@ -2,19 +2,18 @@ package obdKotlin.decoders
 
 import obdKotlin.protocol.Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
-import obdKotlin.WorkMode
+import obdKotlin.core.WorkMode
 import obdKotlin.messages.*
 
 
-class AtDecoder(
-    private val eventFlow: MutableSharedFlow<Message?>,
-) : Decoder(eventFlow) {
+class AtDecoder() : Decoder() {
 
     companion object {
         private const val POSITIVE_ANSWER = "ok"
         private const val DEVICE_NAME = "elm327"
     }
 
+    override val eventFlow: MutableSharedFlow<Message?> = MutableSharedFlow()
 
     override suspend fun decode(message: ByteArray, workMode: WorkMode): Boolean {
         val decodedString = message.decodeToString()
@@ -23,7 +22,7 @@ class AtDecoder(
                 return if (decodedString.contains(DEVICE_NAME, true)) {
                     isPositiveIdleAnswer(decodedString)
                 } else {
-                    eventFlow.emit(CommonMessages.CommonAtAnswer(decodedString, Message.MessageType.COMMON))
+                    eventFlow.emit(Message.CommonAtAnswer(decodedString))
                     false
                 }
             }
@@ -38,7 +37,7 @@ class AtDecoder(
                 } else if(decodeProtocol(decodedString)){
                     true
                 } else {
-                    eventFlow.emit(CommonMessages.CommonAtAnswer(decodedString, Message.MessageType.COMMON))
+                    eventFlow.emit(Message.CommonAtAnswer(decodedString))
                     false
                 }
             }
@@ -52,7 +51,7 @@ class AtDecoder(
 
     private suspend fun isPositiveIdleAnswer(answer: String): Boolean {
         //todo refact substring
-        eventFlow.emit(CommonMessages.InitElmMessage(answer.substring(0, 3), Message.MessageType.COMMON))
+        eventFlow.emit(Message.InitElmMessage(answer.substring(0, 3)))
         return true
     }
 
@@ -62,7 +61,7 @@ class AtDecoder(
             it.hexOrdinal == answer || it.hexOrdinal == answer.take(2)
         }
         protocol?.let {
-            eventFlow.emit(CommonMessages.SelectedProtocolMessage(it, Message.MessageType.COMMON))
+            eventFlow.emit(Message.SelectedProtocolMessage(it))
             return true
         }
         return false
