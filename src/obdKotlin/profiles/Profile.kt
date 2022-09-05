@@ -1,14 +1,11 @@
 package obdKotlin.profiles
 
-import obdKotlin.commands.Commands
+import obdKotlin.encoders.SpecialEncoder
 import obdKotlin.protocol.Protocol
 
-enum class Profile(
+data class Profile(
     val protocol: Protocol,
-    val settings: List<Pair<Commands.AtCommands, String?>>
-) {
-
-    DEFAULT(Protocol.AUTOMATIC, listOf()),
-    ACCORD(Protocol.ISO_14230_4_5kbaud, listOf(Pair(Commands.AtCommands.SetHeader, "th"))),
-
-}
+    val settingsAndParams: List<String>,//setting and param
+    val canMode: Boolean,
+    val encoder: SpecialEncoder? = null
+)

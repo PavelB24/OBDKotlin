@@ -1,9 +1,6 @@
 package obdKotlin.protocol
 
 import kotlinx.coroutines.flow.SharedFlow
-import obdKotlin.commands.Commands
-import obdKotlin.messages.Message
-import obdKotlin.profiles.CustomProfile
 import obdKotlin.profiles.Profile
 
 abstract class BaseProtocolManager {
@@ -11,24 +8,27 @@ abstract class BaseProtocolManager {
 
     abstract val obdCommandFlow: SharedFlow<String>
     abstract val currentHeader: String?
-    abstract suspend fun handleAnswer()
-    abstract suspend fun setSettingWithParameter(command: Commands.AtCommands, parameter: String)
+    abstract suspend fun switchToStandardMode(extra: List<String>? = null)
+    abstract suspend fun handleInitialAnswer()
     abstract fun resetStates()
     abstract suspend fun askCurrentProto()
     abstract suspend fun resetSession()
-    abstract fun isLastSettingSend(): Boolean
-    abstract suspend fun sendNextSettings()
-    abstract fun checkIfCanProto(message: Message): Boolean
-    abstract suspend fun setSetting(command: Commands.AtCommands)
+    abstract fun isQueueEmpty(): Boolean
+    abstract suspend fun sendNextSettings(removeLast: Boolean = false, onEmptyQueue: (suspend() -> Unit)? = null)
+    abstract suspend fun setSetting(command: String)
     abstract suspend fun switchProtocol(protocol: Protocol)
     abstract suspend fun onRestart(
         strategy: ProtocolManagerStrategy,
+        warmStart: Boolean,
         protocol: Protocol? = null,
         extra: List<String>? = null
     )
-    abstract suspend fun setHeaderAndReceiver(headerAddress: String, receiverAddress: String, isAlreadyCan: Boolean)
+    abstract suspend fun setHeaderAndReceiver(
+        headerAddress: String,
+        receiverAddress: String?,
+        isAlreadyCan: Boolean,
+        extra: List<String>? = null)
     abstract suspend fun startWithProfile(profile: Profile)
-    abstract suspend fun startWithProfile(profile: CustomProfile)
 
 
 
