@@ -2,11 +2,20 @@ package obdKotlin.commandProcessors
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+<<<<<<< HEAD
 import obdKotlin.core.WorkMode
+=======
+import obdKotlin.WorkMode
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 import obdKotlin.commands.CommandContainer
 import obdKotlin.toHex
 import obdKotlin.toOneCharHex
 import obdKotlin.toThreeCharHex
+<<<<<<< HEAD
+=======
+import obdKotlin.utills.CommandFormatter
+import obdKotlin.utills.FrameGenerator
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 import java.lang.StringBuilder
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -23,6 +32,7 @@ class CommandHandler() : BaseCommandHandler() {
 
     override fun isQueueEmpty(): Boolean = commandQueue.isEmpty()
 
+<<<<<<< HEAD
     override fun getLastCommand(): String? = commandQueue.peek()?.command
 
     override suspend fun sendNextCommand(lastCommandFailed: Boolean?) {
@@ -31,6 +41,18 @@ class CommandHandler() : BaseCommandHandler() {
                 removeCommand(commandQueue.poll().command)
             } else {
                 commandQueue.remove()
+=======
+    override fun getCurrentCommand(): String? = commandQueue.peek()?.command
+
+    override suspend fun sendNextCommand(lastCommandFailed: Boolean?) {
+        if (commandQueue.isNotEmpty()) {
+            lastCommandFailed?.let {
+                if (it) {
+                    removeCommand(commandQueue.poll().command)
+                } else {
+                    commandQueue.remove()
+                }
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
             }
         }
         if (commandQueue.isNotEmpty()) {
@@ -38,6 +60,7 @@ class CommandHandler() : BaseCommandHandler() {
             command.delay?.let {
                 delay(it)
             }
+<<<<<<< HEAD
             val handledCommand = if (canMode.get()) buildCommand(command.command) else command.command
             if (handledCommand.length <= 16) {
                 commandFlow.emit(handledCommand)
@@ -53,6 +76,21 @@ class CommandHandler() : BaseCommandHandler() {
                     if (commandQueue.isNotEmpty()) {
                         commandQueue.add(CommandContainer(command.command, it))
                     }
+=======
+            val handledCommand = if (canMode.get()) FrameGenerator.generateFrame(command.command) else command.command
+            if (handledCommand.length <= 16) {
+                commandFlow.emit(CommandFormatter.formatPid(handledCommand))
+            } else {
+                handledCommand.chunked(16).forEach {
+                    delay(100)
+                    commandFlow.emit(CommandFormatter.formatPid(it))
+                }
+
+            }
+            command.delay?.let {
+                if (commandQueue.isNotEmpty()) {
+                    commandQueue.add(CommandContainer(command.command, it))
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
                 }
 
                 //положить саму комманду в конец очереди если нужен повтор, фреймы положить в начало очереди
@@ -62,6 +100,7 @@ class CommandHandler() : BaseCommandHandler() {
         }
     }
 
+<<<<<<< HEAD
     private fun buildCommand(command: String): String {
 
         if (command.length <= 14) {
@@ -93,6 +132,8 @@ class CommandHandler() : BaseCommandHandler() {
             return handledCommand.toString()
         }
     }
+=======
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 
     /**
      * Put null for delete all commands in queue
@@ -108,10 +149,17 @@ class CommandHandler() : BaseCommandHandler() {
 
 
     override suspend fun receiveCommand(command: String, delay: Long?, workMode: WorkMode) {
+<<<<<<< HEAD
         commandQueue.add(CommandContainer(command.replace(" ", ""), delay))
         if (workMode == WorkMode.COMMANDS && commandAllowed.get()) {
             sendNextCommand()
             commandAllowed.set(false)
+=======
+        commandQueue.add(CommandContainer(command, delay))
+        if (workMode == WorkMode.COMMANDS && commandAllowed.get()) {
+            commandAllowed.set(false)
+            sendNextCommand()
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
         }
     }
 

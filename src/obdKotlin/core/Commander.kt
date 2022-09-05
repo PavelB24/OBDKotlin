@@ -3,6 +3,10 @@ package obdKotlin.core
 import kotlinx.coroutines.flow.SharedFlow
 import obdKotlin.commandProcessors.BaseCommandHandler
 import obdKotlin.commandProcessors.CommandHandler
+<<<<<<< HEAD
+=======
+import obdKotlin.commands.CommandContainer
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 import obdKotlin.decoders.*
 import obdKotlin.decoders.PinAnswerDecoder
 import obdKotlin.encoders.SpecialEncoder
@@ -41,7 +45,11 @@ abstract class Commander(protoManager: BaseProtocolManager) {
     abstract  fun resetSettings()
     abstract fun startWithAuto(systemEventListener: SystemEventListener? = null)
     abstract fun startWithProtoAndRemember(protocol: Protocol, systemEventListener: SystemEventListener? = null)
+<<<<<<< HEAD
     abstract fun setCommand(command: String, repeatTime: Long? = null)
+=======
+    abstract fun sendCommand(command: String, repeatTime: Long? = null)
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     abstract fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?)
     abstract fun stop()
 
@@ -108,10 +116,16 @@ abstract class Commander(protoManager: BaseProtocolManager) {
                 } else {
                     OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler)
                 }
-                resetStates()
                 return commander
             }
         }
 
+<<<<<<< HEAD
 
+=======
+    abstract fun removeRepeatedCommand(command: String)
+    abstract fun removeRepeatedCommands()
+    abstract fun sendCommands(commands: List<CommandContainer>)
+    abstract fun sendMultiCommand()
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 }

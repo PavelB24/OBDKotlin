@@ -15,7 +15,7 @@ class AtDecoder() : Decoder() {
 
     override val eventFlow: MutableSharedFlow<Message?> = MutableSharedFlow()
 
-    override suspend fun decode(message: ByteArray, workMode: WorkMode): Boolean {
+    override suspend fun decode(message: ByteArray, workMode: WorkMode): EncodingState {
         val decodedString = message.decodeToString()
         when (workMode) {
             WorkMode.IDLE -> {
@@ -23,7 +23,11 @@ class AtDecoder() : Decoder() {
                     isPositiveIdleAnswer(decodedString)
                 } else {
                     eventFlow.emit(Message.CommonAtAnswer(decodedString))
+<<<<<<< HEAD
                     false
+=======
+                    EncodingState.UNSUCCESSFUL
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
                 }
             }
 
@@ -35,24 +39,33 @@ class AtDecoder() : Decoder() {
                 return if (decodedString.contains(POSITIVE_ANSWER)) {
                     isPositiveIdleAnswer(decodedString)
                 } else if(decodeProtocol(decodedString)){
-                    true
+                    EncodingState.SUCCESSFUL
                 } else {
                     eventFlow.emit(Message.CommonAtAnswer(decodedString))
+<<<<<<< HEAD
                     false
+=======
+                    EncodingState.UNSUCCESSFUL
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
                 }
             }
         }
 
     }
 
-    private suspend fun isPositiveOBDAnswer(answer: String): Boolean {
-        return answer.contains(POSITIVE_ANSWER, true)
+    private suspend fun isPositiveOBDAnswer(answer: String): EncodingState {
+        return if (answer.contains(POSITIVE_ANSWER, true))
+            EncodingState.SUCCESSFUL else EncodingState.UNSUCCESSFUL
     }
 
-    private suspend fun isPositiveIdleAnswer(answer: String): Boolean {
+    private suspend fun isPositiveIdleAnswer(answer: String): EncodingState {
         //todo refact substring
         eventFlow.emit(Message.InitElmMessage(answer.substring(0, 3)))
+<<<<<<< HEAD
         return true
+=======
+        return EncodingState.SUCCESSFUL
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     }
 
 

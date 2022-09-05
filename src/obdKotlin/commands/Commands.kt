@@ -3,10 +3,16 @@
 package obdKotlin.commands
 
 const val AT_PREFIX = "AT"
+<<<<<<< HEAD
 const val POSTFIX = "\r"
 
 internal abstract class Commands {
     enum class PidMod(val hex: String, val positiveCode: String) {
+=======
+
+internal abstract class Commands {
+    internal enum class PidMod(val hex: String, val positiveCode: String) {
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 
         SHOW_CURRENT("01", "41"),
         SHOW_FREEZE_FRAME("02", "42"),
@@ -17,12 +23,50 @@ internal abstract class Commands {
         SHOW_PENDING_DIAGN_TROUBLES_CODES("07", "47"),
         CONTROL_ON_BOARD_SYS("08", "48"),
         VEHICLE_INFO_REQUEST("09", "49"),
-        DELETED_ERRORS("0A", "4A")
+        DELETED_ERRORS("0A", "4A"),
+        CHECK_ON_CAN("", "")
     }
 
 
-    enum class AtCommands(val command: String) {
+   internal enum class AtCommands(val command: String) {
 
+        Repeat("\r"), //Repeat last command
+        EchoOff("${AT_PREFIX}E0\r"), //Set Echo Off
+        ResetAll("${AT_PREFIX}Z\r"),
+        SetWakeUpMessagesOff("${AT_PREFIX}SW\r"),
+        FastInit("${AT_PREFIX}FI\r"),
+        AllowLongMessages("${AT_PREFIX}AL\r"),
+        GetVehicleProtoAsNumber("${AT_PREFIX}DPN\r"),
+        PrintingSpacesOff("${AT_PREFIX}S0\r"),
+        SetHeader("${AT_PREFIX}SH"),
+        SetProto("${AT_PREFIX}SP"),
+        TryProto("${AT_PREFIX}TR\r"),
+        CanExtAdr("${AT_PREFIX}CAE\r"), // Just CAE to turn off, use CAE hh for turn on
+        FlowControlOff("${AT_PREFIX}CFC0\r"),
+        FlowControlOn("${AT_PREFIX}CFC1\r"),
+        SetReceiverAdrFilter("${AT_PREFIX}CRA"), //Just CRA for reset or hhh or hhhhhhhh for set
+        AdaptiveTimingOn("${AT_PREFIX}AT1\r"),
+        AutoFormatCanFramesOff("${AT_PREFIX}CAF0\r"),
+        WarmStart("${AT_PREFIX}WS\r")
+//        SetBaudRateDivisor("${AT_PREFIX}BRD"),
+//        Defaults("${AT_PREFIX}D"), //Set All to Defaults
+
+//        EchoOn("${AT_PREFIX}E1"), //Set Echo on
+//        ForgetEvents("${AT_PREFIX}FE"), //ForgetEvents
+//        PrintId("${AT_PREFIX}I"), //PrintVersionId
+//        LineFeedsOn("${AT_PREFIX}L1"),
+//        LineFeedsOff("${AT_PREFIX}L0"),
+//        LowPowerMode("${AT_PREFIX}LP"),
+//        MemoryOff("${AT_PREFIX}M0"),
+//        MemoryOn("${AT_PREFIX}M1"),
+//        ReadStoredData(""),
+//        SaveDataByte(""),
+
+//        DisplayTheDeviceDescription("${AT_PREFIX}@1"),
+//        DisplayVIN("${AT_PREFIX}@2"),
+//        StoreTheVIN("${AT_PREFIX}@3"),
+
+<<<<<<< HEAD
 
 
 
@@ -62,6 +106,8 @@ internal abstract class Commands {
 //        DisplayVIN("${AT_PREFIX}@2"),
 //        StoreTheVIN("${AT_PREFIX}@3"),
 
+=======
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 
         /**
          * Здесь мы указываем, что elm в качастве фрейма fc всегда будет сообщать ЭБУ, что тот может посылать

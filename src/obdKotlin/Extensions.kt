@@ -69,9 +69,12 @@ internal fun String.hexToBinaryList(): List<String> {
 }
 
 internal fun String.hexToInt(): Int {
+<<<<<<< HEAD
     if (this.length != 2) {
         throw IllegalArgumentException("Not a hex value, len should == 2 when actual len == ${this.length}")
     }
+=======
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     return this.toInt(16)
 }
 

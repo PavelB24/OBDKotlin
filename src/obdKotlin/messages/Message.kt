@@ -1,6 +1,10 @@
 package obdKotlin.messages
 
+<<<<<<< HEAD
 import obdKotlin.core.WorkMode
+=======
+import obdKotlin.WorkMode
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 import obdKotlin.protocol.Protocol
 
 sealed class Message() {
@@ -13,6 +17,11 @@ sealed class Message() {
         val bin: ByteArray
     ): Message()
 
+<<<<<<< HEAD
+=======
+    internal data class UnEncodedMessage(val bytes: ByteArray): Message()
+
+>>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     /**
      * To use in special encoder, put data in your class inherited from CustomData
      */
