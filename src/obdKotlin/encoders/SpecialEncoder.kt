@@ -1,27 +1,6 @@
 package obdKotlin.encoders
 
 import kotlinx.coroutines.flow.MutableSharedFlow
-<<<<<<< HEAD
-import obdKotlin.decoders.Encoder
-import obdKotlin.messages.Message
-
-abstract class SpecialEncoder {
-
-    abstract suspend fun handleBytes(message: ByteArray): Boolean
-
-    protected var eventFlow: MutableSharedFlow<Message?>? = null
-
-    fun bindMessagesFlow(flow: MutableSharedFlow<Message?>){
-        eventFlow = flow
-    }
-
-    companion object{
-
-        fun getInstance(type: SpecialEncoders): Encoder {
-
-        }
-    }
-=======
 import obdKotlin.decoders.EncodingState
 import obdKotlin.hexToInt
 import obdKotlin.messages.Message
@@ -97,5 +76,4 @@ abstract class SpecialEncoder {
 //        }
 //    }
 
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 }

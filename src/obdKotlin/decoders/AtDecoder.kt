@@ -2,7 +2,7 @@ package obdKotlin.decoders
 
 import obdKotlin.protocol.Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
-import obdKotlin.core.WorkMode
+import obdKotlin.WorkMode
 import obdKotlin.messages.*
 
 
@@ -23,11 +23,7 @@ class AtDecoder() : Decoder() {
                     isPositiveIdleAnswer(decodedString)
                 } else {
                     eventFlow.emit(Message.CommonAtAnswer(decodedString))
-<<<<<<< HEAD
-                    false
-=======
                     EncodingState.UNSUCCESSFUL
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
                 }
             }
 
@@ -42,11 +38,7 @@ class AtDecoder() : Decoder() {
                     EncodingState.SUCCESSFUL
                 } else {
                     eventFlow.emit(Message.CommonAtAnswer(decodedString))
-<<<<<<< HEAD
-                    false
-=======
                     EncodingState.UNSUCCESSFUL
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
                 }
             }
         }
@@ -61,11 +53,7 @@ class AtDecoder() : Decoder() {
     private suspend fun isPositiveIdleAnswer(answer: String): EncodingState {
         //todo refact substring
         eventFlow.emit(Message.InitElmMessage(answer.substring(0, 3)))
-<<<<<<< HEAD
-        return true
-=======
         return EncodingState.SUCCESSFUL
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     }
 
 

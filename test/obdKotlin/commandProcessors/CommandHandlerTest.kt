@@ -1,23 +1,16 @@
 package obdKotlin.commandProcessors
 
-<<<<<<< HEAD
-=======
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.runTest
 import obdKotlin.WorkMode
 import obdKotlin.messages.Message
 import org.junit.After
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
 import org.junit.Test
 
 import org.junit.Assert.*
 
 class CommandHandlerTest {
 
-<<<<<<< HEAD
-    @Test
-    fun getCommandFlow() {
-=======
     var subject = CommandHandler()
 
     @After
@@ -29,36 +22,10 @@ class CommandHandlerTest {
     fun getCommandFlow() {
         assertNotEquals(subject.commandFlow, MutableSharedFlow<Message>())
 
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     }
 
     @Test
     fun getCanMode() {
-<<<<<<< HEAD
-    }
-
-    @Test
-    fun sendNextCommand() {
-    }
-
-    @Test
-    fun buildCommand() {
-        val h = CommandHandler()
-        val com = "05AC"
-        assertEquals("0205AC", h.buildCommand(com))
-    }
-
-    @Test
-    fun removeCommand() {
-    }
-
-    @Test
-    fun receiveCommand() {
-    }
-
-    @Test
-    fun receiveCanCommand() {
-=======
         assertEquals(subject.canMode.get(), false)
         subject.canMode.set(true)
         assertEquals(subject.canMode.get(), true)
@@ -145,7 +112,6 @@ class CommandHandlerTest {
         subject.removeCommand("0103")
         assertEquals( subject.getCurrentCommand(), "0102")
 
->>>>>>> 61257416ebc4218fbd9b3c63ea2dcb4f83c64b4a
     }
 
     @Test
