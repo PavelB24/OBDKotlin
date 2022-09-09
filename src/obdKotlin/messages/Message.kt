@@ -13,7 +13,9 @@ sealed class Message() {
         val bin: ByteArray
     ): Message()
 
-    internal data class UnEncodedMessage(val bytes: ByteArray): Message()
+    data class TroubleCodes(
+        val codes: List<String>
+    ): Message()
 
     /**
      * To use in special encoder, put data in your class inherited from CustomData
