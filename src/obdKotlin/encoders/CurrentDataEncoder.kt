@@ -283,7 +283,7 @@ class CurrentDataEncoder(private val eventFlow: MutableSharedFlow<Message?>): En
     private fun decodeMafFlowRate(bytesBody: ByteArray): Message {
         val hexA = bytesBody.decodeToString(0, 2)
         val hexB = bytesBody.decodeToString(2, 4)
-        val waste: Float = (256 * hexA.hexToInt() + hexB.hexToInt() ) /100.00f
+        val rate: Float = (256 * hexA.hexToInt() + hexB.hexToInt() ) /100.00f
     }
 
     private fun decodeAmbientAirTemperature(bytesBody: ByteArray): Message {

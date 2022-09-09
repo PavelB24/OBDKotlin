@@ -86,6 +86,10 @@ class CommandHandler() : BaseCommandHandler() {
         }
     }
 
+    override suspend fun receiveCommand(commands: List<CommandContainer>, workMode: WorkMode) {
+        TODO("Not yet implemented")
+    }
+
 
     override fun receiveMultiCommand(commands: List<String>) {
         TODO("Not yet implemented")

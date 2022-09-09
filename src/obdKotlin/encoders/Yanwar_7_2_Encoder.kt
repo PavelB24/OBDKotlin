@@ -20,9 +20,7 @@ class Yanwar_7_2_Encoder(): SpecialEncoder() {
         return EncodingState.SUCCESSFUL
     }
 
-
-
-    override fun decodeBufferedMessage(): EncodingState {
+    override suspend fun decodeBufferedMessage(): EncodingState {
         TODO("Not yet implemented")
     }
 
