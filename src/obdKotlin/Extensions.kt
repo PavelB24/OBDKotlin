@@ -3,9 +3,7 @@ package obdKotlin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
-import java.lang.IllegalArgumentException
 import java.lang.StringBuilder
-
 
 internal fun UByteArray.toBinaryArray(): CharArray {
     val strb = StringBuilder()
@@ -27,8 +25,8 @@ internal fun Int.toBinary(len: Int = 1): String {
     return String.format("%" + len + "s", this.toString(2)).replace(" ".toRegex(), "0")
 }
 
-internal fun <T> Flow<T>.mix(other: Flow<T>, other2: Flow<T>? = null): Flow<T> = flow{
-    this@mix.collectLatest{
+internal fun <T> Flow<T>.mix(other: Flow<T>, other2: Flow<T>? = null): Flow<T> = flow {
+    this@mix.collectLatest {
         this.emit(it)
     }
     other.collectLatest {
@@ -40,7 +38,6 @@ internal fun <T> Flow<T>.mix(other: Flow<T>, other2: Flow<T>? = null): Flow<T> =
         }
     }
 }
-
 
 internal fun Char.toBoolean(): Boolean {
     if (this != '1' && this != '0') {
@@ -74,9 +71,10 @@ internal fun String.hexToInt(): Int {
 
 internal fun String.hexToBinary(): CharArray {
     return String.format(
-        "%" + 8 + "s", this.toInt(16).toString(2)
+        "%" + 8 + "s",
+        this.toInt(16).toString(2)
     ).replace(
-        " ".toRegex(), "0"
+        " ".toRegex(),
+        "0"
     ).toCharArray()
 }
-
