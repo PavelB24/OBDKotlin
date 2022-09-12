@@ -5,7 +5,7 @@ import obdKotlin.commands.AT_PREFIX
 import obdKotlin.commands.CommandRout
 import obdKotlin.exceptions.WrongInitCommandException
 import obdKotlin.protocol.Protocol
-import java.util.*
+import java.util.Locale
 
 internal object CommandUtil {
 
