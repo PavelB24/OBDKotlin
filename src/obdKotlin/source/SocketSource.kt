@@ -1,23 +1,17 @@
 package obdKotlin.source
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.isActive
-import java.io.*
+import kotlinx.coroutines.flow.MutableSharedFlow
 import java.net.Socket
 import java.nio.ByteBuffer
 
 class SocketSource(private val socket: Socket) : Source() {
 
-
     override val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
 
     override val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
 
-
 //    private val input = BufferedInputStream(socket.getInputStream())
 //    private val output = BufferedOutputStream(socket.getOutputStream())
-
 
     override suspend fun observeByteCommands() {
 //        outputByteFlow.onEach { sendToSource(it) }.collect()
@@ -50,8 +44,6 @@ class SocketSource(private val socket: Socket) : Source() {
 //                // todo
 //            }
 //        }
-
-
     }
 
     private suspend fun sendToCommander(buffer: ByteBuffer) {
@@ -59,6 +51,4 @@ class SocketSource(private val socket: Socket) : Source() {
         inputByteFlow.emit(buffer.array())
         buffer.clear()
     }
-
-
 }

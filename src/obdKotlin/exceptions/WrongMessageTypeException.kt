@@ -2,9 +2,9 @@ package obdKotlin.exceptions
 
 import java.lang.IllegalArgumentException
 
-class WrongMessageTypeException(): IllegalArgumentException() {
+class WrongMessageTypeException() : IllegalArgumentException() {
 
-    constructor(reason: String): this(){
+    constructor(reason: String) : this() {
         customMessage = reason
     }
 

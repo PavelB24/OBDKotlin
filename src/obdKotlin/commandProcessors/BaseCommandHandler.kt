@@ -10,7 +10,6 @@ abstract class BaseCommandHandler() {
     abstract val commandFlow: MutableSharedFlow<String>
     abstract val commandAllowed: AtomicBoolean
 
-
     /**
      * Remove specific command or remove all from queue to send, if id==null
      */
@@ -22,7 +21,7 @@ abstract class BaseCommandHandler() {
 
     abstract fun isQueueEmpty(): Boolean
 
-    abstract suspend fun receiveCommand(command: String,  delay: Long?, workMode: WorkMode)
+    abstract suspend fun receiveCommand(command: String, delay: Long?, workMode: WorkMode)
 
     abstract suspend fun receiveCommand(commands: List<CommandContainer>, workMode: WorkMode)
 

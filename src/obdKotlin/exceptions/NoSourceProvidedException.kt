@@ -1,8 +1,8 @@
 package obdKotlin.exceptions
 
-class NoSourceProvidedException(): Exception() {
+class NoSourceProvidedException() : Exception() {
 
-    constructor(text: String): this(){
+    constructor(text: String) : this() {
         customMessage = text
     }
 
@@ -10,5 +10,4 @@ class NoSourceProvidedException(): Exception() {
 
     override val message: String?
         get() = customMessage
-
 }

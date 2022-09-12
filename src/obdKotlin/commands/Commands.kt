@@ -20,11 +20,10 @@ internal abstract class Commands {
         CHECK_ON_CAN("", "")
     }
 
+    internal enum class AtCommands(val command: String) {
 
-   internal enum class AtCommands(val command: String) {
-
-        Repeat("\r"), //Repeat last command
-        EchoOff("${AT_PREFIX}E0\r"), //Set Echo Off
+        Repeat("\r"), // Repeat last command
+        EchoOff("${AT_PREFIX}E0\r"), // Set Echo Off
         ResetAll("${AT_PREFIX}Z\r"),
         SetWakeUpMessagesOff("${AT_PREFIX}SW\r"),
         FastInit("${AT_PREFIX}FI\r"),
@@ -37,7 +36,7 @@ internal abstract class Commands {
         CanExtAdr("${AT_PREFIX}CAE\r"), // Just CAE to turn off, use CAE hh for turn on
         FlowControlOff("${AT_PREFIX}CFC0\r"),
         FlowControlOn("${AT_PREFIX}CFC1\r"),
-        SetReceiverAdrFilter("${AT_PREFIX}CRA"), //Just CRA for reset or hhh or hhhhhhhh for set
+        SetReceiverAdrFilter("${AT_PREFIX}CRA"), // Just CRA for reset or hhh or hhhhhhhh for set
         AdaptiveTimingOn("${AT_PREFIX}AT1\r"),
         AutoFormatCanFramesOff("${AT_PREFIX}CAF0\r"),
         WarmStart("${AT_PREFIX}WS\r")
@@ -58,7 +57,6 @@ internal abstract class Commands {
 //        DisplayTheDeviceDescription("${AT_PREFIX}@1"),
 //        DisplayVIN("${AT_PREFIX}@2"),
 //        StoreTheVIN("${AT_PREFIX}@3"),
-
 
         /**
          * Здесь мы указываем, что elm в качастве фрейма fc всегда будет сообщать ЭБУ, что тот может посылать
@@ -91,7 +89,6 @@ internal abstract class Commands {
 //        TryWithAutoSearch("${AT_PREFIX}TRA"),
 //        EraseStoredProto("${AT_PREFIX}SP00"),
 
-
 //        PerformFastInit("${AT_PREFIX}FI"),
 //        SetIsoBaud("${AT_PREFIX}IB"),
 //        DisplayDLCOn("${AT_PREFIX}D1"),
@@ -103,7 +100,6 @@ internal abstract class Commands {
 //        UseVarDLCOn("${AT_PREFIX}V1"),
 //        UseVarDLCOff("${AT_PREFIX}V0"),
 
-
 //        SetCanIdFilter("${AT_PREFIX}CF"), //hhh or hhhhhhhh
 //        FlowControlOn("${AT_PREFIX}CFC1"),
 
@@ -114,9 +110,6 @@ internal abstract class Commands {
 
 //        AdaptiveTimingOff("${AT_PREFIX}AT0"),
 //        AutoFormatCanFramesOn("${AT_PREFIX}CAF1"),
-
-
-
     }
 
 //    enum class PidCommands(val hexCommand: String) {
@@ -170,8 +163,6 @@ internal abstract class Commands {
 //
 //
 //    }
-
-
 }
 const val pid00 = "00"
 const val pid20 = "20"

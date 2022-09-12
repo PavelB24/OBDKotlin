@@ -2,14 +2,13 @@ package obdKotlin.decoders
 
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import obdKotlin.*
-import obdKotlin.commands.*
+import obdKotlin.WorkMode
+import obdKotlin.commands.Commands
 import obdKotlin.encoders.CurrentDataEncoder
 import obdKotlin.encoders.SpecialEncoder
 import obdKotlin.encoders.TroubleCodesEncoder
 import obdKotlin.messages.Message
 import java.util.concurrent.atomic.AtomicBoolean
-
 
 internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
 
@@ -39,32 +38,41 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
 
     override suspend fun decode(message: ByteArray, workMode: WorkMode): EncodingState {
         var startIndex = 0
-        val decodedHex = message.decodeToString()
-        if (decodedHex.contains("?")) {
-            return EncodingState.UNSUCCESSFUL
-        } else if (decodedHex.contains("SEARCHING...", true) && decodedHex.length > 12) {
-            startIndex = 12 //12 bytes == SEARCHING...
-        } else if (decodedHex == "SEARCHING..." || decodedHex == "SEARCHING" || decodedHex == "SEARCHING..") {
-            return EncodingState.WAIT_NEXT
-        } else if (decodedHex.contains("NO DATA", true)) {
-            return EncodingState.UNSUCCESSFUL
+        val decoded = message.decodeToString().trim()
+        when {
+            decoded.contains("?") -> {
+                return EncodingState.Unsuccessful("?")
+            }
+            decoded.contains("SEARCHING...", true) && decoded.length > 12 -> {
+                startIndex = 12
+                // 12 bytes == SEARCHING...
+            }
+            decoded == "SEARCHING..." || decoded == "SEARCHING" || decoded == "SEARCHING.." -> {
+                return EncodingState.WaitNext
+            }
+            decoded.contains("NO DATA", true) -> {
+                return EncodingState.Unsuccessful("NO DATA")
+            }
+            (decoded.length == 4 || decoded.length == 5) && (decoded.last() == 'V' || decoded.last() == 'v') -> {
+                eventFlow.emit(Message.Voltage(decoded))
+                return EncodingState.Successful
+            }
         }
 
         return when (checkMode(message)) {
             Commands.PidMod.SHOW_CURRENT -> {
                 currentDataEncoder.handleBytes(
                     message.copyOfRange(startIndex + 4, message.size),
-                    decodedHex.substring(startIndex+2, startIndex+4)
+                    decoded.substring(startIndex + 2, startIndex + 4)
                 )
             }
 
             Commands.PidMod.SHOW_FREEZE_FRAME -> TODO()
             Commands.PidMod.SHOW_DIAGNOSTIC_TROUBLES_CODES -> {
                 troubleCodesEncoder.handleBytes(
-                    message.copyOfRange(startIndex +2, message.size),
+                    message.copyOfRange(startIndex + 2, message.size),
                     null
                 )
-
             }
 
             Commands.PidMod.CLEAR_TROUBLES_CODES_AND_STORE_VAL -> TODO()
@@ -77,7 +85,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             Commands.PidMod.CHECK_ON_CAN -> {
                 if (canMode.get() && specialEncoder != null) {
                     specialEncoder!!.handleBytes(message)
-                } else EncodingState.UNSUCCESSFUL
+                } else EncodingState.Unsuccessful(decoded)
             }
         }
     }
@@ -96,5 +104,4 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
         encoder.bindMessagesFlow(eventFlow)
         specialEncoder = encoder
     }
-
 }

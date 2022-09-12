@@ -6,7 +6,9 @@ interface SystemEventListener {
 
     fun onWorkModeChanged(workMode: WorkMode)
 
-    fun onDecodeError(command: String?)
+    fun onDecodeError(fail: FailOn?)
+
+    fun onConnectionLost()
 
     fun onSwitchMode(canMode: Boolean)
 }

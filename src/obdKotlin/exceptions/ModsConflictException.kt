@@ -2,7 +2,7 @@ package obdKotlin.exceptions
 
 class ModsConflictException() : Exception() {
 
-    constructor(text: String): this(){
+    constructor(text: String) : this() {
         customMessage = text
     }
 
