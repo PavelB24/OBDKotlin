@@ -1,12 +1,11 @@
 package obdKotlin.protocol
 
-
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import obdKotlin.commands.Commands
 import obdKotlin.exceptions.ModsConflictException
 import obdKotlin.profiles.Profile
-import obdKotlin.utills.CommandFormatter
+import obdKotlin.utills.CommandUtil
 import java.lang.IllegalStateException
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -40,20 +39,18 @@ internal class ProtocolManager : BaseProtocolManager() {
     private var userProtocol: Protocol? = null
     private val settingsQueue = ConcurrentLinkedQueue<String>()
 
-
     override suspend fun switchToStandardMode(extra: List<String>?) {
         val isQueueEmpty = settingsQueue.isEmpty()
         settingsQueue.addAll(canOffCommandsSet)
         extra?.let {
             it.forEach { command ->
-                settingsQueue.add(CommandFormatter.formatAT(command.replace(" ", "")))
+                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
             }
         }
         if (isQueueEmpty) {
             _obdCommandFlow.emit(settingsQueue.poll())
         }
     }
-
 
     @Throws(IllegalStateException::class)
     override suspend fun handleInitialAnswer() {
@@ -64,7 +61,6 @@ internal class ProtocolManager : BaseProtocolManager() {
                 ProtocolManagerStrategy.AUTO -> setProto()
             }
         }
-
     }
 
     private suspend fun setProto() {
@@ -75,7 +71,6 @@ internal class ProtocolManager : BaseProtocolManager() {
         }
     }
 
-
     private suspend fun tryProto() {
         if (userProtocol != null) {
             _obdCommandFlow.emit("${Commands.AtCommands.TryProto}${userProtocol!!.hexOrdinal}\r")
@@ -84,13 +79,11 @@ internal class ProtocolManager : BaseProtocolManager() {
         }
     }
 
-
     override fun resetStates() {
         strategy = null
         userProtocol = null
         settingsQueue.clear()
     }
-
 
     override suspend fun askCurrentProto() {
         _obdCommandFlow.emit(Commands.AtCommands.GetVehicleProtoAsNumber.command)
@@ -128,14 +121,13 @@ internal class ProtocolManager : BaseProtocolManager() {
         }
         extra?.let {
             it.forEach { command ->
-                settingsQueue.add(CommandFormatter.formatAT(command.replace(" ", "")))
+                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
             }
         }
         if (isQueueEmpty) {
             sendNextSettings()
         }
     }
-
 
     override suspend fun startWithProfile(profile: Profile) {
         strategy = ProtocolManagerStrategy.SET
@@ -180,12 +172,11 @@ internal class ProtocolManager : BaseProtocolManager() {
         } else {
             resetStates()
             throw ModsConflictException("For non-auto strategy, protocol should be provided")
-
         }
     }
 
     override suspend fun setSetting(command: String) {
-        val handledCommand = CommandFormatter.formatAT(command)
+        val handledCommand = CommandUtil.formatAT(command)
         settingsQueue.add(handledCommand)
         if (isQueueEmpty()) {
             sendNextSettings()
@@ -195,6 +186,4 @@ internal class ProtocolManager : BaseProtocolManager() {
     override suspend fun switchProtocol(protocol: Protocol) {
         _obdCommandFlow.emit("${Commands.AtCommands.SetProto}${protocol.hexOrdinal}\r")
     }
-
-
 }

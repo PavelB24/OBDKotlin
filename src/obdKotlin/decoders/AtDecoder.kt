@@ -1,16 +1,15 @@
 package obdKotlin.decoders
 
-import obdKotlin.protocol.Protocol
 import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.WorkMode
 import obdKotlin.messages.*
-
+import obdKotlin.protocol.Protocol
 
 class AtDecoder() : Decoder() {
 
     companion object {
         private const val POSITIVE_ANSWER = "ok"
-        private const val DEVICE_NAME = "elm327"
+        private const val DEVICE_NAME = "elm"
     }
 
     override val eventFlow: MutableSharedFlow<Message?> = MutableSharedFlow()
@@ -23,7 +22,7 @@ class AtDecoder() : Decoder() {
                     isPositiveIdleAnswer(decodedString)
                 } else {
                     eventFlow.emit(Message.CommonAtAnswer(decodedString))
-                    EncodingState.UNSUCCESSFUL
+                    EncodingState.Unsuccessful(decodedString)
                 }
             }
 
@@ -34,28 +33,27 @@ class AtDecoder() : Decoder() {
             else -> {
                 return if (decodedString.contains(POSITIVE_ANSWER)) {
                     isPositiveIdleAnswer(decodedString)
-                } else if(decodeProtocol(decodedString)){
-                    EncodingState.SUCCESSFUL
+                } else if (decodeProtocol(decodedString)) {
+                    EncodingState.Successful
                 } else {
                     eventFlow.emit(Message.CommonAtAnswer(decodedString))
-                    EncodingState.UNSUCCESSFUL
+                    EncodingState.Unsuccessful(decodedString)
                 }
             }
         }
-
     }
 
     private suspend fun isPositiveOBDAnswer(answer: String): EncodingState {
-        return if (answer.contains(POSITIVE_ANSWER, true))
-            EncodingState.SUCCESSFUL else EncodingState.UNSUCCESSFUL
+        return if (answer.contains(POSITIVE_ANSWER, true)) {
+            EncodingState.Successful
+        } else EncodingState.Unsuccessful(answer)
     }
 
     private suspend fun isPositiveIdleAnswer(answer: String): EncodingState {
-        //todo refact substring
+        // todo refact substring
         eventFlow.emit(Message.InitElmMessage(answer.substring(0, 3)))
-        return EncodingState.SUCCESSFUL
+        return EncodingState.Successful
     }
-
 
     private suspend fun decodeProtocol(answer: String): Boolean {
         val protocol = Protocol.values().find {
@@ -67,6 +65,4 @@ class AtDecoder() : Decoder() {
         }
         return false
     }
-
-
 }

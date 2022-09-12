@@ -2,7 +2,7 @@ package obdKotlin.exceptions
 
 class WrongInitCommandException() : Exception() {
 
-    constructor(text: String): this(){
+    constructor(text: String) : this() {
         customMessage = text
     }
 
@@ -10,5 +10,4 @@ class WrongInitCommandException() : Exception() {
 
     override val message: String?
         get() = customMessage
-
 }

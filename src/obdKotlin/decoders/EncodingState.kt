@@ -1,5 +1,7 @@
 package obdKotlin.decoders
 
-enum class EncodingState {
-    SUCCESSFUL, UNSUCCESSFUL, WAIT_NEXT
+sealed class EncodingState {
+    object Successful : EncodingState()
+    data class Unsuccessful(val onAnswer: String) : EncodingState()
+    object WaitNext : EncodingState()
 }

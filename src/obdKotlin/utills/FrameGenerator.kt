@@ -9,7 +9,7 @@ import java.lang.StringBuilder
 object FrameGenerator {
 
     @Synchronized
-    fun generateFrame(command: String): String{
+    fun generateFrame(command: String): String {
         val findInStandard = Commands.PidMod.values().find {
             it.hex == command.take(2)
         }
@@ -34,7 +34,7 @@ object FrameGenerator {
                 } else if (i == framesCount) {
                     val substring = command.substring(offset, command.length)
                     if (substring.isNotEmpty()) {
-                        handledCommand.append("2${i.toOneCharHex()}${substring}")
+                        handledCommand.append("2${i.toOneCharHex()}$substring")
                     }
                 } else {
                     handledCommand.append("2${i.toHex()}${command.substring(offset, offset + 14)}")

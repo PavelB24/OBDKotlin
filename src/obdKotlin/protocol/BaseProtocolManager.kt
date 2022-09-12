@@ -5,7 +5,6 @@ import obdKotlin.profiles.Profile
 
 abstract class BaseProtocolManager {
 
-
     abstract val obdCommandFlow: SharedFlow<String>
     abstract val currentHeader: String?
     abstract suspend fun switchToStandardMode(extra: List<String>? = null)
@@ -27,9 +26,7 @@ abstract class BaseProtocolManager {
         headerAddress: String,
         receiverAddress: String?,
         isAlreadyCan: Boolean,
-        extra: List<String>? = null)
+        extra: List<String>? = null
+    )
     abstract suspend fun startWithProfile(profile: Profile)
-
-
-
 }

@@ -4,12 +4,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.WorkMode
 import obdKotlin.commands.CommandContainer
-import obdKotlin.toHex
-import obdKotlin.toOneCharHex
-import obdKotlin.toThreeCharHex
-import obdKotlin.utills.CommandFormatter
+import obdKotlin.utills.CommandUtil
 import obdKotlin.utills.FrameGenerator
-import java.lang.StringBuilder
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -44,26 +40,24 @@ class CommandHandler() : BaseCommandHandler() {
             }
             val handledCommand = if (canMode.get()) FrameGenerator.generateFrame(command.command) else command.command
             if (handledCommand.length <= 16) {
-                commandFlow.emit(CommandFormatter.formatPid(handledCommand))
+                commandFlow.emit(CommandUtil.formatPid(handledCommand))
             } else {
                 handledCommand.chunked(16).forEach {
                     delay(100)
-                    commandFlow.emit(CommandFormatter.formatPid(it))
+                    commandFlow.emit(CommandUtil.formatPid(it))
                 }
-
             }
             command.delay?.let {
                 if (commandQueue.isNotEmpty()) {
                     commandQueue.add(CommandContainer(command.command, it))
                 }
 
-                //положить саму комманду в конец очереди если нужен повтор, фреймы положить в начало очереди
-                //возможно поставить поле в коммандах по типу форматтед, чтоб не форматировали фрейм дважды,
+                // положить саму комманду в конец очереди если нужен повтор, фреймы положить в начало очереди
+                // возможно поставить поле в коммандах по типу форматтед, чтоб не форматировали фрейм дважды,
                 // можно мапить комманды в др класс
             }
         }
     }
-
 
     /**
      * Put null for delete all commands in queue
@@ -77,7 +71,6 @@ class CommandHandler() : BaseCommandHandler() {
         commandAllowed.set(true)
     }
 
-
     override suspend fun receiveCommand(command: String, delay: Long?, workMode: WorkMode) {
         commandQueue.add(CommandContainer(command, delay))
         if (workMode == WorkMode.COMMANDS && commandAllowed.get()) {
@@ -89,7 +82,6 @@ class CommandHandler() : BaseCommandHandler() {
     override suspend fun receiveCommand(commands: List<CommandContainer>, workMode: WorkMode) {
         TODO("Not yet implemented")
     }
-
 
     override fun receiveMultiCommand(commands: List<String>) {
         TODO("Not yet implemented")

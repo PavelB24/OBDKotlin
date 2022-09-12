@@ -7,18 +7,18 @@ import obdKotlin.commands.CommandContainer
 import obdKotlin.decoders.*
 import obdKotlin.decoders.PinAnswerDecoder
 import obdKotlin.encoders.SpecialEncoder
-import obdKotlin.protocol.BaseProtocolManager
 import obdKotlin.messages.Message
 import obdKotlin.profiles.Profile
+import obdKotlin.protocol.BaseProtocolManager
 import obdKotlin.protocol.Protocol
 import obdKotlin.protocol.ProtocolManager
 import obdKotlin.source.Source
 
 abstract class Commander(protoManager: BaseProtocolManager) {
 
-
-
     abstract val encodedDataMessages: SharedFlow<Message?>
+
+    val protocolManager: BaseProtocolManager = protoManager
 
     /**
      *  Header Address for ATSH receiver Address for ATCRA
@@ -28,7 +28,7 @@ abstract class Commander(protoManager: BaseProtocolManager) {
         headerAddress: String,
         receiverAddress: String?,
         specialEncoder: SpecialEncoder,
-        extra: List<String>
+        extra: List<String>? = null
     )
 
     abstract fun switchProtocol(protocol: Protocol)
@@ -39,79 +39,72 @@ abstract class Commander(protoManager: BaseProtocolManager) {
         command: String
     )
 
-    abstract  fun resetSettings()
+    abstract fun resetSettings()
     abstract fun startWithAuto(systemEventListener: SystemEventListener? = null)
     abstract fun startWithProtoAndRemember(protocol: Protocol, systemEventListener: SystemEventListener? = null)
     abstract fun sendCommand(command: String, repeatTime: Long? = null)
     abstract fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?)
     abstract fun stop()
 
-    abstract fun switchToStandardMode(extra: List<String>)
+    abstract fun switchToStandardMode(extra: List<String>? = null)
 
     class Builder {
 
-            private var source: Source? = null
-            private var useWS: Boolean = false
-            private var protocolManager: BaseProtocolManager = ProtocolManager()
-            private var atDecoderClass: Decoder = AtDecoder()
-            private var pinDecoderClass: SpecialEncoderHost = PinAnswerDecoder()
-            private var commandHandler: BaseCommandHandler = CommandHandler()
+        private var source: Source? = null
+        private var useWS: Boolean = false
+        private var protocolManager: BaseProtocolManager = ProtocolManager()
+        private var atDecoderClass: Decoder = AtDecoder()
+        private var pinDecoderClass: SpecialEncoderHost = PinAnswerDecoder()
+        private var commandHandler: BaseCommandHandler = CommandHandler()
 
-
-
-            private fun resetStates(){
-                source = null
-                useWS = false
-                protocolManager = ProtocolManager()
-                atDecoderClass = AtDecoder()
-                pinDecoderClass= PinAnswerDecoder()
-                commandHandler = CommandHandler()
-            }
-
-            fun source(source: Source): Builder {
-                this.source = source
-                return this
-            }
-
-
-            fun customProtocolManager(manager: BaseProtocolManager): Builder {
-                protocolManager = manager
-                return this
-            }
-
-
-            fun customCommandHandler(handler: BaseCommandHandler): Builder {
-                commandHandler = handler
-                return this
-            }
-
-            fun customAtDecoder(atDecoderClass: Decoder): Builder{
-                this.atDecoderClass = atDecoderClass
-                return this
-            }
-
-
-            fun useWarmStarts(): Builder{
-                useWS = true
-                return this
-            }
-
-
-            fun customPinDecoder(pinDecoderClass: SpecialEncoderHost): Builder{
-                this.pinDecoderClass = pinDecoderClass
-                return this
-            }
-
-
-            fun build(): Commander {
-                val commander = if (source != null) {
-                    OBDCommander(protocolManager, useWS,  atDecoderClass, pinDecoderClass, commandHandler, source!!)
-                } else {
-                    OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler)
-                }
-                return commander
-            }
+        private fun resetStates() {
+            source = null
+            useWS = false
+            protocolManager = ProtocolManager()
+            atDecoderClass = AtDecoder()
+            pinDecoderClass = PinAnswerDecoder()
+            commandHandler = CommandHandler()
         }
+
+        fun source(source: Source): Builder {
+            this.source = source
+            return this
+        }
+
+        fun customProtocolManager(manager: BaseProtocolManager): Builder {
+            protocolManager = manager
+            return this
+        }
+
+        fun customCommandHandler(handler: BaseCommandHandler): Builder {
+            commandHandler = handler
+            return this
+        }
+
+        fun customAtDecoder(atDecoderClass: Decoder): Builder {
+            this.atDecoderClass = atDecoderClass
+            return this
+        }
+
+        fun useWarmStarts(): Builder {
+            useWS = true
+            return this
+        }
+
+        fun customPinDecoder(pinDecoderClass: SpecialEncoderHost): Builder {
+            this.pinDecoderClass = pinDecoderClass
+            return this
+        }
+
+        fun build(): Commander {
+            val commander = if (source != null) {
+                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler, source!!)
+            } else {
+                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler)
+            }
+            return commander
+        }
+    }
 
     abstract fun removeRepeatedCommand(command: String)
     abstract fun removeRepeatedCommands()
