@@ -2,7 +2,7 @@ package obdKotlin.decoders
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.WorkMode
-import obdKotlin.messages.*
+import obdKotlin.messages.Message
 import obdKotlin.protocol.Protocol
 
 class AtDecoder() : Decoder() {

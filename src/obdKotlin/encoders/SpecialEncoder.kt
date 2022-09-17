@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.decoders.EncodingState
 import obdKotlin.hexToInt
 import obdKotlin.messages.Message
+import obdKotlin.profiles.Profile
 import obdKotlin.toHex
 import java.lang.IllegalStateException
 import java.nio.ByteBuffer
@@ -67,12 +68,22 @@ abstract class SpecialEncoder {
         eventFlow = flow
     }
 
-//    companion object{
-//
-//        fun getInstance(type: SpecialEncoders): Encoder {
-//            return when(type){
-//
-//            }
-//        }
-//    }
+    companion object {
+
+        fun getInstance(type: Profile.Profiles): SpecialEncoder {
+            return when (type) {
+                Profile.Profiles.BYD_F3 -> TODO()
+                Profile.Profiles.BYD_F3_ABS -> TODO()
+                Profile.Profiles.CHERRY_TIGO_DELPHI -> TODO()
+                Profile.Profiles.PEUGEOT_308_20120 -> TODO()
+                Profile.Profiles.BMW320E91AT -> TODO()
+                Profile.Profiles.FIAT_PRE_OBD -> TODO()
+                Profile.Profiles.YANVAR_72 -> TODO()
+                Profile.Profiles.YANVAR_5_11 -> TODO()
+                Profile.Profiles.ACCORD_24 -> TODO()
+                Profile.Profiles.LEXUS_RX330 -> TODO()
+                Profile.Profiles.UAZ_1797 -> TODO()
+            }
+        }
+    }
 }

@@ -2,8 +2,8 @@ package obdKotlin.decoders
 
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import obdKotlin.*
-import obdKotlin.commands.*
+import obdKotlin.WorkMode
+import obdKotlin.commands.Commands
 import obdKotlin.encoders.CurrentDataEncoder
 import obdKotlin.encoders.SpecialEncoder
 import obdKotlin.encoders.TroubleCodesEncoder
