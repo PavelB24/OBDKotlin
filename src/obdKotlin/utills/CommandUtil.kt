@@ -3,6 +3,7 @@ package obdKotlin.utills
 import obdKotlin.WorkMode
 import obdKotlin.commands.AT_PREFIX
 import obdKotlin.commands.CommandRout
+import obdKotlin.commands.Commands
 import obdKotlin.exceptions.WrongInitCommandException
 import obdKotlin.protocol.Protocol
 import java.util.Locale
@@ -63,7 +64,7 @@ internal object CommandUtil {
             "SP" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
-                        " Hint: To switch protocol use startWith... or profile"
+                        " Hint: To switch protocol use start() or profile"
                 )
             }
             "TP" -> {
@@ -75,7 +76,7 @@ internal object CommandUtil {
             "D" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
-                        " To to using this in with tuned connection may occurs errors. " +
+                        " Using this  with tuned connection may occurs errors. " +
                         "Should use on Idle workMode state. Hint: Use reset()"
                 )
             }
@@ -110,4 +111,22 @@ internal object CommandUtil {
 
     @Synchronized
     fun formatPid(command: String): String = "$command\r"
+    fun filterExtra(extra: List<String>, canMode: Boolean): List<String> {
+        val filtered = extra.filter {
+            when (it) {
+                "Z" -> false
+                "z" -> false
+                "WS" -> false
+                "ws" -> false
+                "PC" -> false
+                "pc" -> false
+                "SP" -> false
+                else -> !it.contains("SP", true)
+            }
+        }.toMutableList()
+        if (canMode) {
+            filtered.add(Commands.AtCommands.AutoFormatCanFramesOff.command)
+        }
+        return filtered
+    }
 }

@@ -7,7 +7,7 @@ abstract class BaseProtocolManager {
 
     abstract val obdCommandFlow: SharedFlow<String>
     abstract val currentHeader: String?
-    abstract suspend fun switchToStandardMode(extra: List<String>? = null)
+
     abstract suspend fun handleInitialAnswer()
     abstract fun resetStates()
     abstract suspend fun askCurrentProto()
@@ -20,12 +20,6 @@ abstract class BaseProtocolManager {
         strategy: ProtocolManagerStrategy,
         warmStart: Boolean,
         protocol: Protocol? = null,
-        extra: List<String>? = null
-    )
-    abstract suspend fun setHeaderAndReceiver(
-        headerAddress: String,
-        receiverAddress: String?,
-        isAlreadyCan: Boolean,
         extra: List<String>? = null
     )
     abstract suspend fun startWithProfile(profile: Profile)
