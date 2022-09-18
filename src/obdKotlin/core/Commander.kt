@@ -54,7 +54,7 @@ abstract class Commander(protoManager: BaseProtocolManager) {
         command: String
     )
 
-    abstract fun resetSettings()
+    abstract suspend fun resetSettings()
 
     abstract fun sendCommand(command: String, repeatTime: Long? = null)
     abstract fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?)

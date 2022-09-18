@@ -11,7 +11,7 @@ abstract class BaseProtocolManager {
     abstract suspend fun handleInitialAnswer()
     abstract fun resetStates()
     abstract suspend fun askCurrentProto()
-    abstract suspend fun resetSession()
+    abstract suspend fun resetSession(warmStart: Boolean)
     abstract fun isQueueEmpty(): Boolean
     abstract suspend fun sendNextSettings(removeLast: Boolean = false, onEmptyQueue: (suspend() -> Unit)? = null)
     abstract suspend fun setSetting(command: String)

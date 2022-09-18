@@ -91,30 +91,6 @@ internal class ProtocolManager : BaseProtocolManager() {
         _obdCommandFlow.emit(command)
     }
 
-//    override suspend fun setHeaderAndReceiver(
-//        headerAddress: String,
-//        receiverAddress: String?,
-//        isAlreadyCan: Boolean,
-//        extra: List<String>?
-//    ) {
-//        if (!isAlreadyCan) {
-//            settingsQueue.addAll(canOnCommandsSet)
-//        }
-//        val isQueueEmpty = settingsQueue.isEmpty()
-//        settingsQueue.add("${Commands.AtCommands.SetHeader.command}$headerAddress\r")
-//        receiverAddress?.let {
-//            settingsQueue.add("${Commands.AtCommands.SetReceiverAdrFilter.command}$it\r")
-//        }
-//        extra?.let {
-//            it.forEach { command ->
-//                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
-//            }
-//        }
-//        if (isQueueEmpty) {
-//            sendNextSettings()
-//        }
-//    }
-
     override suspend fun startWithProfile(profile: Profile) {
         strategy = ProtocolManagerStrategy.SET
         settingsQueue.addAll(standardSettingsSet)
@@ -124,9 +100,13 @@ internal class ProtocolManager : BaseProtocolManager() {
         _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}\r")
     }
 
-    override suspend fun resetSession() {
+    override suspend fun resetSession(warmStart: Boolean) {
         strategy = null
-        _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}\r")
+        if (!warmStart) {
+            _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}\r")
+        } else {
+            _obdCommandFlow.emit("${Commands.AtCommands.WarmStart.command}\r")
+        }
     }
 
     override fun isQueueEmpty(): Boolean = settingsQueue.isEmpty()
@@ -162,9 +142,7 @@ internal class ProtocolManager : BaseProtocolManager() {
 
     override suspend fun setSetting(command: String) {
         settingsQueue.add(command)
-        if (isQueueEmpty()) {
-            sendNextSettings()
-        }
+        sendNextSettings()
     }
 
     override suspend fun switchProtocol(protocol: Protocol) {

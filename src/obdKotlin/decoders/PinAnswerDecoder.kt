@@ -43,19 +43,33 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             decoded.contains("?") -> {
                 return EncodingState.Unsuccessful("?")
             }
+
             decoded.contains("SEARCHING...", true) && decoded.length > 12 -> {
                 startIndex = 12
                 // 12 bytes == SEARCHING...
             }
+
             decoded == "SEARCHING..." || decoded == "SEARCHING" || decoded == "SEARCHING.." -> {
                 return EncodingState.WaitNext
             }
+
             decoded.contains("NO DATA", true) -> {
                 return EncodingState.Unsuccessful("NO DATA")
             }
+
             (decoded.length == 4 || decoded.length == 5) && (decoded.last() == 'V' || decoded.last() == 'v') -> {
                 eventFlow.emit(Message.Voltage(decoded))
                 return EncodingState.Successful
+            }
+
+            decoded.contains(AtDecoder.DEVICE_NAME, true) &&
+                (
+                    !decoded.contains(
+                        AtDecoder.WARM_RES_ANSWER,
+                        true
+                    ) && !decoded.contains(AtDecoder.HARD_RES_ANSWER)
+                    ) -> {
+                eventFlow.emit(Message.ElmDeviceName(decoded))
             }
         }
 
