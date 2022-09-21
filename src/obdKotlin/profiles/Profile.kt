@@ -6,7 +6,8 @@ abstract class Profile(
     val protocol: Protocol?,
     val settingsAndParams: List<String>, // setting and params
     val encoder: SpecialEncoder? = null,
-    val notAT: List<String>? = null
+    val notAT: List<String>? = null,
+    val extendedMode: Boolean = true
 ) {
 
     enum class Profiles {

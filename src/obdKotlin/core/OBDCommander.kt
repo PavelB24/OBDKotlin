@@ -4,7 +4,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.buffer
@@ -31,7 +30,7 @@ import obdKotlin.protocol.BaseProtocolManager
 import obdKotlin.protocol.Protocol
 import obdKotlin.protocol.ProtocolManagerStrategy
 import obdKotlin.source.Source
-import obdKotlin.utills.CommandUtil
+import obdKotlin.utils.CommandUtil
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
 
@@ -75,7 +74,7 @@ internal class OBDCommander(
     }
 
     private var systemEventListener: SystemEventListener? = null
-    private val canMode = AtomicBoolean(false)
+    private val extendedMode = AtomicBoolean(false)
     private var source: Source? = null
     private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     var workMode = WorkMode.IDLE
@@ -233,7 +232,7 @@ internal class OBDCommander(
         checkSource()
         val transformedCommand = CommandUtil.formatAT(command.replace(" ", ""))
         commanderScope.launch {
-            when (CommandUtil.checkAndRout(canMode.get(), workMode, transformedCommand)) {
+            when (CommandUtil.checkAndRout(extendedMode.get(), workMode, transformedCommand)) {
                 CommandRout.RESET -> {
                     onReset()
                     protocolManager.resetSession(warmStarts)
@@ -251,17 +250,23 @@ internal class OBDCommander(
         }
     }
 
-    override fun start(protocol: Protocol?, systemEventListener: SystemEventListener?, extra: List<String>?, specialEncoder: SpecialEncoder?) {
+    override fun start(
+        protocol: Protocol?,
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean
+    ) {
         checkSource()
         onReset()
         commanderScope.launch {
+            switchCan(extendedMode)
             setListener(systemEventListener)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
-                switchCan(true)
             }
             val filteredExtra = extra?.run {
-                return@run CommandUtil.filterExtra(extra, canMode.get())
+                return@run CommandUtil.filterExtraAndFormat(extra, extendedMode)
             }
             protocolManager.onRestart(ProtocolManagerStrategy.TRY, warmStarts, protocol, filteredExtra)
         }
@@ -288,34 +293,45 @@ internal class OBDCommander(
     }
 
     @Throws(NoSourceProvidedException::class)
-    override fun startWithAuto(systemEventListener: SystemEventListener?, extra: List<String>?, specialEncoder: SpecialEncoder?) {
+    override fun startWithAuto(
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean
+    ) {
         checkSource()
         onReset()
         commanderScope.launch {
+            switchCan(extendedMode)
             setListener(systemEventListener)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
-                switchCan(true)
             }
             val filteredExtra = extra?.run {
-                return@run CommandUtil.filterExtra(extra, canMode.get())
+                return@run CommandUtil.filterExtraAndFormat(extra, extendedMode)
             }
             protocolManager.onRestart(ProtocolManagerStrategy.AUTO, warmStarts, Protocol.AUTOMATIC, filteredExtra)
         }
     }
 
     @Throws(NoSourceProvidedException::class)
-    override fun startAndRemember(protocol: Protocol?, systemEventListener: SystemEventListener?, extra: List<String>?, specialEncoder: SpecialEncoder?) {
+    override fun startAndRemember(
+        protocol: Protocol?,
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean
+    ) {
         checkSource()
         onReset()
         commanderScope.launch {
+            switchCan(extendedMode)
             setListener(systemEventListener)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
-                switchCan(true)
             }
             val filteredExtra = extra?.run {
-                return@run CommandUtil.filterExtra(extra, canMode.get())
+                return@run CommandUtil.filterExtraAndFormat(extra, extendedMode)
             }
             protocolManager.onRestart(ProtocolManagerStrategy.SET, warmStarts, protocol, filteredExtra)
         }
@@ -360,9 +376,9 @@ internal class OBDCommander(
     }
 
     private fun switchCan(mode: Boolean) {
-        canMode.set(mode)
-        commandHandler.canMode.set(mode)
-        pinDecoder.canMode.set(mode)
+        extendedMode.set(mode)
+        commandHandler.extended.set(mode)
+        pinDecoder.extended.set(mode)
         systemEventListener?.onSwitchMode(mode)
     }
 

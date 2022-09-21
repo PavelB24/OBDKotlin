@@ -15,7 +15,7 @@ abstract class BaseCommandHandler() {
      */
     abstract fun removeCommand(command: String? = null)
 
-    abstract val canMode: AtomicBoolean
+    abstract val extended: AtomicBoolean
 
     abstract suspend fun sendNextCommand(lastCommandFailed: Boolean? = null)
 

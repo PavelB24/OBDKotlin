@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 import java.lang.StringBuilder
 
+@OptIn(ExperimentalUnsignedTypes::class)
 internal fun UByteArray.toBinaryArray(): CharArray {
     val strb = StringBuilder()
     this.forEach {
@@ -26,15 +27,15 @@ internal fun Int.toBinary(len: Int = 1): String {
 }
 
 internal fun <T> Flow<T>.mix(other: Flow<T>, other2: Flow<T>? = null): Flow<T> = flow {
-    this@mix.collectLatest {
-        this.emit(it)
+    this@mix.collectLatest { value ->
+        this.emit(value)
     }
-    other.collectLatest {
-        this.emit(it)
+    other.collectLatest { value ->
+        this.emit(value)
     }
     other2?.let {
-        it.collectLatest {
-            this.emit(it)
+        it.collectLatest { value ->
+            this.emit(value)
         }
     }
 }

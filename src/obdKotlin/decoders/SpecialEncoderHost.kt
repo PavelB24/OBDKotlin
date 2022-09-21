@@ -10,7 +10,7 @@ interface SpecialEncoderHost {
 
     val eventFlow: MutableSharedFlow<Message?>
 
-    val canMode: AtomicBoolean
+    val extended: AtomicBoolean
 
     suspend fun decode(message: ByteArray, workMode: WorkMode): EncodingState
 

@@ -1,54 +1,69 @@
 package obdKotlin.source
 
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.isActive
+import java.io.IOException
 import java.net.Socket
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class SocketSource(private val socket: Socket) : Source() {
 
-    override val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
-
-    override val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
-
-//    private val input = BufferedInputStream(socket.getInputStream())
-//    private val output = BufferedOutputStream(socket.getOutputStream())
+    private val input = socket.getInputStream()
+    private val output = socket.getOutputStream()
 
     override suspend fun observeByteCommands() {
-//        outputByteFlow.onEach { sendToSource(it) }.collect()
-//    }
+        outputByteFlow.onEach { sendToSource(it) }.collect()
+    }
 
-//
-//    private suspend fun sendToSource(bytes: ByteArray) {
-//        output.write(bytes)
-//    }
-//
-//    /*
-//        Run this func only in coroutine or new thread
-//     */
-//    private suspend fun readData(job: CoroutineScope) {
-//        val localBuffer = ByteBuffer.allocate(8)
-//        while (job.isActive) {
-//            try {
-//                var readByte: Byte
-//                do {
-//                    readByte = input.read().toByte()
-//                    if (readByte.toInt().toChar() == '>') {
-//                        break
-//                    } else {
-//                        localBuffer.put(readByte)
-//                    }
-//                } while (readByte > -1)
-//                sendToCommander(localBuffer)
-//
-//            } catch (e: Exception){
-//                // todo
-//            }
-//        }
+    private suspend fun sendToSource(bytes: ByteArray) {
+        if (socket.isConnected) {
+            try {
+                output.write(bytes)
+            } catch (e: IOException) {
+                // todo
+            }
+        }
+    }
+
+    /*
+        Run this func only in coroutine or new thread
+     */
+    private suspend fun readData(job: CoroutineScope) {
+        while (job.isActive) {
+            var localBuffer: ByteBuffer? = null
+            try {
+                var capacity = input.available()
+                while (socket.isConnected && capacity > 0) {
+                    localBuffer = ByteBuffer.allocate(capacity)
+                    localBuffer.order(ByteOrder.BIG_ENDIAN)
+                    val readUByte = input.read()
+                    if (readUByte.toChar() == '>') {
+                        capacity = 0
+                        break
+                    } else {
+                        localBuffer.put(readUByte.toByte())
+                    }
+                }
+                localBuffer?.let {
+                    sendToCommander(it)
+                }
+            } catch (e: IOException) {
+                // todo
+            }
+        }
     }
 
     private suspend fun sendToCommander(buffer: ByteBuffer) {
         buffer.flip()
-        inputByteFlow.emit(buffer.array())
+        val array = buffer.array()
+        val cc: Byte = 13
+        val filteredArray = array.filter {
+            it != cc
+        }.toByteArray()
+        inputByteFlow.emit(filteredArray)
         buffer.clear()
     }
 }

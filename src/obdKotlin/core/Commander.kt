@@ -33,21 +33,24 @@ abstract class Commander(protoManager: BaseProtocolManager) {
         protocol: Protocol?,
         systemEventListener: SystemEventListener?,
         extra: List<String>?,
-        specialEncoder: SpecialEncoder?
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean = false
     )
 
     @Throws(NoSourceProvidedException::class)
     abstract fun startWithAuto(
         systemEventListener: SystemEventListener?,
         extra: List<String>?,
-        specialEncoder: SpecialEncoder?
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean = false
     )
 
     abstract fun start(
         protocol: Protocol?,
         systemEventListener: SystemEventListener?,
         extra: List<String>?,
-        specialEncoder: SpecialEncoder?
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean = false
     )
     abstract fun bindSource(source: Source, resetStates: Boolean = false)
     abstract fun setNewSetting(

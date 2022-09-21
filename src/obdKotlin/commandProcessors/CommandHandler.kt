@@ -4,8 +4,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.WorkMode
 import obdKotlin.commands.CommandContainer
-import obdKotlin.utills.CommandUtil
-import obdKotlin.utills.FrameGenerator
+import obdKotlin.utils.CommandUtil
+import obdKotlin.utils.FrameGenerator
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -15,7 +15,7 @@ class CommandHandler() : BaseCommandHandler() {
 
     override val commandFlow: MutableSharedFlow<String> = MutableSharedFlow()
 
-    override val canMode = AtomicBoolean(false)
+    override val extended = AtomicBoolean(false)
 
     override val commandAllowed = AtomicBoolean(true)
 
@@ -38,7 +38,7 @@ class CommandHandler() : BaseCommandHandler() {
             command.delay?.let {
                 delay(it)
             }
-            val handledCommand = if (canMode.get()) FrameGenerator.generateFrame(command.command) else command.command
+            val handledCommand = if (extended.get()) FrameGenerator.generateFrame(command.command) else command.command
             if (handledCommand.length <= 16) {
                 commandFlow.emit(CommandUtil.formatPid(handledCommand))
             } else {

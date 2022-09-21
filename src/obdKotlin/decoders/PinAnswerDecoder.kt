@@ -24,7 +24,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
         BufferOverflow.SUSPEND
     )
 
-    override val canMode = AtomicBoolean(false)
+    override val extended = AtomicBoolean(false)
 
     private val currentDataEncoder by lazy { CurrentDataEncoder(eventFlow) }
 
@@ -97,7 +97,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             Commands.PidMod.VEHICLE_INFO_REQUEST -> TODO()
             Commands.PidMod.DELETED_ERRORS -> TODO()
             Commands.PidMod.CHECK_ON_CAN -> {
-                if (canMode.get() && specialEncoder != null) {
+                if (extended.get() && specialEncoder != null) {
                     specialEncoder!!.handleBytes(message)
                 } else EncodingState.Unsuccessful(decoded)
             }
@@ -114,7 +114,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
     }
 
     override fun setSpecialEncoder(encoder: SpecialEncoder) {
-        canMode.set(true)
+        extended.set(true)
         encoder.bindMessagesFlow(eventFlow)
         specialEncoder = encoder
     }
