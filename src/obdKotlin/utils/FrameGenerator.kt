@@ -1,4 +1,4 @@
-package obdKotlin.utills
+package obdKotlin.utils
 
 import obdKotlin.commands.Commands
 import obdKotlin.toHex

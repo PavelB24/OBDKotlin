@@ -13,7 +13,7 @@ plugins {
 }
 
 sourceSets.main {
-    java.srcDirs("src", "src")
+    java.srcDirs("src", "test")
 }
 
 repositories {
@@ -29,4 +29,5 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     implementation("com.google.guava:guava:31.1-jre")
     api("org.apache.commons:commons-math3:3.6.1")
+    compileOnly("com.google.android:android:4.1.1.4")
 }

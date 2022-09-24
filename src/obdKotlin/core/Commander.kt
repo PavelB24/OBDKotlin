@@ -9,6 +9,7 @@ import obdKotlin.decoders.Decoder
 import obdKotlin.decoders.PinAnswerDecoder
 import obdKotlin.decoders.SpecialEncoderHost
 import obdKotlin.encoders.SpecialEncoder
+import obdKotlin.exceptions.NoSourceProvidedException
 import obdKotlin.messages.Message
 import obdKotlin.profiles.Profile
 import obdKotlin.protocol.BaseProtocolManager
@@ -26,29 +27,41 @@ abstract class Commander(protoManager: BaseProtocolManager) {
      *  Header Address for ATSH receiver Address for ATCRA
      *  Encoder do encode the answer from CAN
      */
-    abstract fun switchToCanMode(
-        headerAddress: String,
-        receiverAddress: String?,
-        specialEncoder: SpecialEncoder,
-        extra: List<String>? = null
+
+    @Throws(NoSourceProvidedException::class)
+    abstract fun startAndRemember(
+        protocol: Protocol?,
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean = false
     )
 
-    abstract fun switchProtocol(protocol: Protocol)
+    @Throws(NoSourceProvidedException::class)
+    abstract fun startWithAuto(
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean = false
+    )
 
-    abstract fun startWithProto(protocol: Protocol, systemEventListener: SystemEventListener? = null)
+    abstract fun start(
+        protocol: Protocol?,
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean = false
+    )
     abstract fun bindSource(source: Source, resetStates: Boolean = false)
     abstract fun setNewSetting(
         command: String
     )
 
-    abstract fun resetSettings()
-    abstract fun startWithAuto(systemEventListener: SystemEventListener? = null)
-    abstract fun startWithProtoAndRemember(protocol: Protocol, systemEventListener: SystemEventListener? = null)
+    abstract suspend fun resetSettings()
+
     abstract fun sendCommand(command: String, repeatTime: Long? = null)
     abstract fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?)
     abstract fun stop()
-
-    abstract fun switchToStandardMode(extra: List<String>? = null)
 
     class Builder {
 

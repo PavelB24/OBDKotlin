@@ -70,7 +70,7 @@ sealed class Message() {
     ) : Message() {
         abstract inner class CustomData
     }
-    data class InitElmMessage(
+    data class ElmDeviceName(
         val elmVersion: String
     ) : Message()
 

@@ -1,8 +1,9 @@
-package obdKotlin.utills
+package obdKotlin.utils
 
 import obdKotlin.WorkMode
 import obdKotlin.commands.AT_PREFIX
 import obdKotlin.commands.CommandRout
+import obdKotlin.commands.Commands
 import obdKotlin.exceptions.WrongInitCommandException
 import obdKotlin.protocol.Protocol
 import java.util.Locale
@@ -57,13 +58,13 @@ internal object CommandUtil {
             "FI" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
-                        " Hint: This option will be automatically applied with ${Protocol.ISO_14230_4_FASTINIT.name}"
+                        " Hint: This command should go with one of init methods ${Protocol.ISO_14230_4_FASTINIT.name}"
                 )
             }
             "SP" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
-                        " Hint: To switch protocol use startWith... or profile"
+                        " Hint: To switch protocol use start() or profile"
                 )
             }
             "TP" -> {
@@ -75,7 +76,7 @@ internal object CommandUtil {
             "D" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
-                        " To to using this in with tuned connection may occurs errors. " +
+                        " Using this  with tuned connection may occurs errors. " +
                         "Should use on Idle workMode state. Hint: Use reset()"
                 )
             }
@@ -110,4 +111,23 @@ internal object CommandUtil {
 
     @Synchronized
     fun formatPid(command: String): String = "$command\r"
+
+    @Synchronized
+    fun filterExtraAndFormat(extra: List<String>, extendedMode: Boolean): List<String> {
+        val filtered = extra.filter {
+            when {
+                it.contains("Z", true) && it.length == 1 -> false
+                it.contains("WS", true) -> false
+                it.contains("PC", true) -> false
+                it.contains("SP", true) -> false
+                it.contains("TP", true) -> false
+                it.contains("D", true) && it.length == 1 -> false
+                else -> true
+            }
+        }.map { formatAT(it) }.toMutableList()
+        if (extendedMode) {
+            filtered.add(Commands.AtCommands.AutoFormatCanFramesOff.command)
+        }
+        return filtered
+    }
 }

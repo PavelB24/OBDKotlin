@@ -24,7 +24,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
         BufferOverflow.SUSPEND
     )
 
-    override val canMode = AtomicBoolean(false)
+    override val extended = AtomicBoolean(false)
 
     private val currentDataEncoder by lazy { CurrentDataEncoder(eventFlow) }
 
@@ -43,19 +43,33 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             decoded.contains("?") -> {
                 return EncodingState.Unsuccessful("?")
             }
+
             decoded.contains("SEARCHING...", true) && decoded.length > 12 -> {
                 startIndex = 12
                 // 12 bytes == SEARCHING...
             }
+
             decoded == "SEARCHING..." || decoded == "SEARCHING" || decoded == "SEARCHING.." -> {
                 return EncodingState.WaitNext
             }
+
             decoded.contains("NO DATA", true) -> {
                 return EncodingState.Unsuccessful("NO DATA")
             }
+
             (decoded.length == 4 || decoded.length == 5) && (decoded.last() == 'V' || decoded.last() == 'v') -> {
                 eventFlow.emit(Message.Voltage(decoded))
                 return EncodingState.Successful
+            }
+
+            decoded.contains(AtDecoder.DEVICE_NAME, true) &&
+                (
+                    !decoded.contains(
+                        AtDecoder.WARM_RES_ANSWER,
+                        true
+                    ) && !decoded.contains(AtDecoder.HARD_RES_ANSWER)
+                    ) -> {
+                eventFlow.emit(Message.ElmDeviceName(decoded))
             }
         }
 
@@ -83,7 +97,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             Commands.PidMod.VEHICLE_INFO_REQUEST -> TODO()
             Commands.PidMod.DELETED_ERRORS -> TODO()
             Commands.PidMod.CHECK_ON_CAN -> {
-                if (canMode.get() && specialEncoder != null) {
+                if (extended.get() && specialEncoder != null) {
                     specialEncoder!!.handleBytes(message)
                 } else EncodingState.Unsuccessful(decoded)
             }
@@ -100,7 +114,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
     }
 
     override fun setSpecialEncoder(encoder: SpecialEncoder) {
-        canMode.set(true)
+        extended.set(true)
         encoder.bindMessagesFlow(eventFlow)
         specialEncoder = encoder
     }

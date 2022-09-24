@@ -4,7 +4,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.buffer
@@ -17,15 +16,13 @@ import obdKotlin.WorkMode
 import obdKotlin.commandProcessors.BaseCommandHandler
 import obdKotlin.commands.CommandContainer
 import obdKotlin.commands.CommandRout
-import obdKotlin.commands.Commands
 import obdKotlin.decoders.Decoder
 import obdKotlin.decoders.EncodingState
 import obdKotlin.decoders.SpecialEncoderHost
 import obdKotlin.encoders.SpecialEncoder
-import obdKotlin.exceptions.ConnectionIsNotReadyException
-import obdKotlin.exceptions.ModsConflictException
 import obdKotlin.exceptions.NoSourceProvidedException
 import obdKotlin.exceptions.WrongInitCommandException
+import obdKotlin.exceptions.WrongMessageTypeException
 import obdKotlin.messages.Message
 import obdKotlin.mix
 import obdKotlin.profiles.Profile
@@ -33,7 +30,7 @@ import obdKotlin.protocol.BaseProtocolManager
 import obdKotlin.protocol.Protocol
 import obdKotlin.protocol.ProtocolManagerStrategy
 import obdKotlin.source.Source
-import obdKotlin.utills.CommandUtil
+import obdKotlin.utils.CommandUtil
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
 
@@ -45,6 +42,7 @@ import kotlin.jvm.Throws
  * Посыллать ли null в в соокет с обработкой?
  * Что если пользователь из кан режима начнёт слать не кан комманды?
  * Подготовить к приёму > символа, по получению которого шлю след комманду done
+ * Впиши строки выхода из кан режима
  */
 internal class OBDCommander(
     protocolManager: BaseProtocolManager,
@@ -56,7 +54,6 @@ internal class OBDCommander(
 
     companion object {
         private const val BUFFER_CAPACITY = 100
-        private const val CONNECTION_STATE_TEXT = "Connection is not ready: "
     }
 
     constructor(
@@ -77,7 +74,7 @@ internal class OBDCommander(
     }
 
     private var systemEventListener: SystemEventListener? = null
-    private val canMode = AtomicBoolean(false)
+    private val extendedMode = AtomicBoolean(false)
     private var source: Source? = null
     private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     var workMode = WorkMode.IDLE
@@ -106,55 +103,82 @@ internal class OBDCommander(
     private suspend fun manageInputData(bytes: ByteArray) {
         when (workMode) {
             WorkMode.IDLE -> {
-                if (atDecoder.decode(bytes, workMode) is EncodingState.Successful) {
-                    changeModeAndInvokeModeCallBack(WorkMode.PROTOCOL)
-                    protocolManager.handleInitialAnswer()
-                } else {
-                    handleNegativeAnswer()
-                }
+                doOnIdle(bytes)
             }
 
             WorkMode.PROTOCOL -> {
-                if (atDecoder.decode(bytes, workMode) is EncodingState.Successful) {
-                    val nextMode = if (protocolManager.isQueueEmpty()) WorkMode.COMMANDS else WorkMode.SETTINGS
-                    changeModeAndInvokeModeCallBack(nextMode)
-                    if (nextMode == WorkMode.SETTINGS) {
-                        protocolManager.sendNextSettings()
-                    } else {
-                        commandHandler.sendNextCommand()
-                    }
-                } else {
-                    handleNegativeAnswer()
-                }
+                doOnProtocol(bytes)
             }
 
             WorkMode.SETTINGS -> {
-                atDecoder.decode(bytes, workMode)
-                if (protocolManager.isQueueEmpty()) {
-                    if (commandHandler.commandAllowed.get() && !commandHandler.isQueueEmpty()) {
-                        commandHandler.commandAllowed.set(false)
-                    }
-                    changeModeAndInvokeModeCallBack(WorkMode.COMMANDS)
-                    commandHandler.sendNextCommand()
-                } else {
-                    protocolManager.sendNextSettings(true) {
-                        commandHandler.sendNextCommand()
-                    }
-                }
+                doOnSettings(bytes)
             }
 
             WorkMode.COMMANDS -> {
-                when (val answer = pinDecoder.decode(bytes, workMode)) {
-                    is EncodingState.Successful -> commandHandler.sendNextCommand(false)
-                    is EncodingState.Unsuccessful -> {
-                        systemEventListener?.onDecodeError(FailOn(answer.onAnswer, commandHandler.getCurrentCommand()))
-                        commandHandler.sendNextCommand(true)
-                    }
-                    is EncodingState.WaitNext -> {}
-                }
-                if (commandHandler.isQueueEmpty()) {
-                    commandHandler.commandAllowed.set(true)
-                }
+                doOnCommands(bytes)
+            }
+        }
+    }
+
+    private suspend fun doOnCommands(bytes: ByteArray) {
+        when (val answer = pinDecoder.decode(bytes, workMode)) {
+            is EncodingState.Successful -> commandHandler.sendNextCommand(false)
+            is EncodingState.Unsuccessful -> {
+                systemEventListener?.onDecodeError(FailOn(workMode, answer.onAnswer, commandHandler.getCurrentCommand()))
+                commandHandler.sendNextCommand(true)
+            }
+            is EncodingState.WaitNext -> {}
+        }
+        if (commandHandler.isQueueEmpty()) {
+            commandHandler.commandAllowed.set(true)
+        }
+    }
+
+    private suspend fun doOnSettings(bytes: ByteArray) {
+        atDecoder.decode(bytes, workMode)
+        if (protocolManager.isQueueEmpty()) {
+            if (commandHandler.commandAllowed.get() && !commandHandler.isQueueEmpty()) {
+                commandHandler.commandAllowed.set(false)
+            }
+            changeModeAndInvokeModeCallBack(WorkMode.COMMANDS)
+            commandHandler.sendNextCommand()
+        } else {
+            protocolManager.sendNextSettings(true) {
+                commandHandler.sendNextCommand()
+            }
+        }
+    }
+
+    private suspend fun doOnProtocol(bytes: ByteArray) {
+        val result = atDecoder.decode(bytes, workMode)
+        if (result is EncodingState.Successful) {
+            val nextMode = if (protocolManager.isQueueEmpty()) WorkMode.COMMANDS else WorkMode.SETTINGS
+            changeModeAndInvokeModeCallBack(nextMode)
+            if (nextMode == WorkMode.SETTINGS) {
+                protocolManager.sendNextSettings()
+            } else {
+                commandHandler.sendNextCommand()
+            }
+        } else if (result is EncodingState.Unsuccessful) {
+            handleNegativeAnswer(result.onAnswer)
+        } else {
+            throw WrongMessageTypeException()
+        }
+    }
+
+    private suspend fun doOnIdle(bytes: ByteArray) {
+        when (val result = atDecoder.decode(bytes, workMode)) {
+            is EncodingState.Successful -> {
+                changeModeAndInvokeModeCallBack(WorkMode.PROTOCOL)
+                protocolManager.handleInitialAnswer()
+            }
+
+            is EncodingState.Unsuccessful -> {
+                handleNegativeAnswer(result.onAnswer)
+            }
+
+            else -> {
+                throw WrongMessageTypeException()
             }
         }
     }
@@ -183,12 +207,11 @@ internal class OBDCommander(
         }
     }
 
-    @Throws(WrongInitCommandException::class)
-    private fun handleNegativeAnswer() {
-        // TODO handle errors
+    @Throws(WrongMessageTypeException::class)
+    private fun handleNegativeAnswer(code: String) {
         when (workMode) {
             WorkMode.IDLE -> {
-                throw WrongInitCommandException()
+                systemEventListener?.onDecodeError(FailOn(workMode, code, null))
             }
 
             WorkMode.PROTOCOL -> {
@@ -207,15 +230,12 @@ internal class OBDCommander(
      */
     override fun setNewSetting(command: String) {
         checkSource()
-        checkState()
-        val transformedCommand = command.replace(" ", "")
+        val transformedCommand = CommandUtil.formatAT(command.replace(" ", ""))
         commanderScope.launch {
-            when (CommandUtil.checkAndRout(canMode.get(), workMode, transformedCommand)) {
+            when (CommandUtil.checkAndRout(extendedMode.get(), workMode, transformedCommand)) {
                 CommandRout.RESET -> {
-                    workMode = WorkMode.SETTINGS
-                    protocolManager.setSetting(transformedCommand)
-                    delay(80)
                     onReset()
+                    protocolManager.resetSession(warmStarts)
                 }
 
                 CommandRout.TO_CH -> {
@@ -230,21 +250,25 @@ internal class OBDCommander(
         }
     }
 
-    private fun checkState() {
-        if (workMode != WorkMode.SETTINGS || workMode != WorkMode.COMMANDS) {
-            throw ConnectionIsNotReadyException("$CONNECTION_STATE_TEXT ${workMode.name}")
-        }
-    }
-
-    override fun startWithProto(protocol: Protocol, systemEventListener: SystemEventListener?) {
+    override fun start(
+        protocol: Protocol?,
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean
+    ) {
         checkSource()
         onReset()
-        setListener(systemEventListener)
-        val extra = if (protocol == Protocol.ISO_14230_4_FASTINIT) {
-            listOf(Commands.AtCommands.FastInit.command)
-        } else null
         commanderScope.launch {
-            protocolManager.onRestart(ProtocolManagerStrategy.TRY, warmStarts, protocol, extra)
+            switchCan(extendedMode)
+            setListener(systemEventListener)
+            specialEncoder?.let {
+                pinDecoder.setSpecialEncoder(specialEncoder)
+            }
+            val filteredExtra = extra?.run {
+                return@run CommandUtil.filterExtraAndFormat(extra, extendedMode)
+            }
+            protocolManager.onRestart(ProtocolManagerStrategy.TRY, warmStarts, protocol, filteredExtra)
         }
     }
 
@@ -252,42 +276,64 @@ internal class OBDCommander(
         this.systemEventListener = systemEventListener
     }
 
-    override fun resetSettings() {
+    override suspend fun resetSettings() {
         checkSource()
         onReset()
         commanderScope.launch {
-            protocolManager.resetSession()
+            protocolManager.resetSession(warmStarts)
         }
     }
 
     private fun onReset() {
+        commandHandler.removeCommand()
         protocolManager.resetStates()
         switchCan(false)
         systemEventListener = null
-        commandHandler.removeCommand()
         changeModeAndInvokeModeCallBack(WorkMode.IDLE)
     }
 
     @Throws(NoSourceProvidedException::class)
-    override fun startWithAuto(systemEventListener: SystemEventListener?) {
+    override fun startWithAuto(
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean
+    ) {
         checkSource()
         onReset()
-        setListener(systemEventListener)
         commanderScope.launch {
-            protocolManager.onRestart(ProtocolManagerStrategy.AUTO, warmStarts)
+            switchCan(extendedMode)
+            setListener(systemEventListener)
+            specialEncoder?.let {
+                pinDecoder.setSpecialEncoder(specialEncoder)
+            }
+            val filteredExtra = extra?.run {
+                return@run CommandUtil.filterExtraAndFormat(extra, extendedMode)
+            }
+            protocolManager.onRestart(ProtocolManagerStrategy.AUTO, warmStarts, Protocol.AUTOMATIC, filteredExtra)
         }
     }
 
     @Throws(NoSourceProvidedException::class)
-    override fun startWithProtoAndRemember(protocol: Protocol, systemEventListener: SystemEventListener?) {
+    override fun startAndRemember(
+        protocol: Protocol?,
+        systemEventListener: SystemEventListener?,
+        extra: List<String>?,
+        specialEncoder: SpecialEncoder?,
+        extendedMode: Boolean
+    ) {
         checkSource()
         onReset()
-        setListener(systemEventListener)
-        val extra = if (protocol == Protocol.ISO_14230_4_FASTINIT) {
-            listOf(Commands.AtCommands.FastInit.command)
-        } else null
         commanderScope.launch {
-            protocolManager.onRestart(ProtocolManagerStrategy.SET, warmStarts, protocol, extra)
+            switchCan(extendedMode)
+            setListener(systemEventListener)
+            specialEncoder?.let {
+                pinDecoder.setSpecialEncoder(specialEncoder)
+            }
+            val filteredExtra = extra?.run {
+                return@run CommandUtil.filterExtraAndFormat(extra, extendedMode)
+            }
+            protocolManager.onRestart(ProtocolManagerStrategy.SET, warmStarts, protocol, filteredExtra)
         }
     }
 
@@ -311,14 +357,6 @@ internal class OBDCommander(
         }
     }
 
-    @Throws(ModsConflictException::class)
-    private fun checkSourceAndMode(mode: WorkMode) {
-        checkSource()
-        if (workMode != mode) {
-            throw ModsConflictException("${mode.name} are not allowed in ${workMode.name}")
-        }
-    }
-
     override fun stop() {
         commanderScope.coroutineContext.cancelChildren()
     }
@@ -332,56 +370,15 @@ internal class OBDCommander(
 
     override fun bindSource(source: Source, resetStates: Boolean) {
         this.source = source
-        resetStates(resetStates)
+        onNewSource(resetStates)
         observeInput()
         observeCommands()
     }
 
-    /**
-     *  SH: Header - address to whom we send command
-     *  CRA: Receive address our listening device (7E8)
-     *  Cation: The function will throw an exception if initial commands and protocol were not applied
-     *  SpecialEncoder can not work properly if were applied wrong initial commands or chose wrong protocol
-     */
-
-    override fun switchToCanMode(
-        headerAddress: String,
-        receiverAddress: String?,
-        specialEncoder: SpecialEncoder,
-        extra: List<String>?
-    ) {
-        checkSource()
-        if ((workMode != WorkMode.IDLE && workMode != WorkMode.PROTOCOL) || warmStarts) {
-            commanderScope.launch {
-                if (!commandHandler.commandAllowed.get()) {
-                    cancelRepeatJobs()
-                }
-                pinDecoder.setSpecialEncoder(specialEncoder)
-                changeModeAndInvokeModeCallBack(WorkMode.SETTINGS)
-                protocolManager.setHeaderAndReceiver(headerAddress, receiverAddress, canMode.get(), extra)
-                switchCan(true)
-            }
-        } else throw ConnectionIsNotReadyException("$CONNECTION_STATE_TEXT ${workMode.name}")
-    }
-
-    override fun switchToStandardMode(extra: List<String>?) {
-        checkSource()
-        if ((workMode != WorkMode.IDLE && workMode != WorkMode.PROTOCOL) || warmStarts) {
-            commanderScope.launch {
-                if (!commandHandler.commandAllowed.get()) {
-                    cancelRepeatJobs()
-                }
-                changeModeAndInvokeModeCallBack(WorkMode.SETTINGS)
-                protocolManager.switchToStandardMode(extra)
-                switchCan(false)
-            }
-        } else throw ConnectionIsNotReadyException("$CONNECTION_STATE_TEXT ${workMode.name}")
-    }
-
     private fun switchCan(mode: Boolean) {
-        canMode.set(mode)
-        commandHandler.canMode.set(mode)
-        pinDecoder.canMode.set(mode)
+        extendedMode.set(mode)
+        commandHandler.extended.set(mode)
+        pinDecoder.extended.set(mode)
         systemEventListener?.onSwitchMode(mode)
     }
 
@@ -405,30 +402,12 @@ internal class OBDCommander(
 
     override fun sendMultiCommand() {}
 
-    private suspend fun cancelRepeatJobs() {
-        commandHandler.removeCommand()
-        // do work and after delay to be sure all commands was delivered
-        delay(50)
-    }
-
-    /**
-     * Use carefully
-     * Protocol manager will automatically send all initial settings via protocol witch was chosen
-     * Settings can be configured manually by setSetting() or setSettingWithParameter()
-     */
-    override fun switchProtocol(protocol: Protocol) {
-        checkSource()
-        commanderScope.launch {
-            cancelRepeatJobs()
-            workMode = WorkMode.PROTOCOL
-            protocolManager.switchProtocol(protocol)
-        }
-    }
-
-    private fun resetStates(resetStates: Boolean) {
+    private fun onNewSource(resetStates: Boolean) {
         commanderScope.coroutineContext.cancelChildren()
         if (resetStates) {
-            onReset()
+            commanderScope.launch {
+                onReset()
+            }
         }
     }
 
@@ -440,15 +419,22 @@ internal class OBDCommander(
     override fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?) {
         checkSource()
         onReset()
-        this.systemEventListener = systemEventListener
-        if (profile.encoder != null) {
-            switchCan(true)
-        }
-        profile.encoder?.let {
-            pinDecoder.setSpecialEncoder(it)
-        }
-
         commanderScope.launch {
+            this@OBDCommander.systemEventListener = systemEventListener
+            if (profile.encoder != null) {
+                switchCan(true)
+            }
+            profile.notAT?.let {
+                commandHandler.receiveCommand(
+                    it.map { command ->
+                        CommandContainer(command)
+                    },
+                    workMode
+                )
+            }
+            profile.encoder?.let {
+                pinDecoder.setSpecialEncoder(it)
+            }
             protocolManager.startWithProfile(profile)
         }
     }

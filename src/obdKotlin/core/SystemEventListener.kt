@@ -10,5 +10,5 @@ interface SystemEventListener {
 
     fun onConnectionLost()
 
-    fun onSwitchMode(canMode: Boolean)
+    fun onSwitchMode(extendedMode: Boolean)
 }

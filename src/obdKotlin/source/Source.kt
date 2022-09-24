@@ -1,12 +1,13 @@
 package obdKotlin.source
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 
 abstract class Source {
 
-    abstract val inputByteFlow: MutableSharedFlow<ByteArray>
+    val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
 
-    abstract val outputByteFlow: MutableSharedFlow<ByteArray>
+    val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
 
-    abstract suspend fun observeByteCommands()
+    abstract suspend fun observeByteCommands(job: CoroutineScope)
 }

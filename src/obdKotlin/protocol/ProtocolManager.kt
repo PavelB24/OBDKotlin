@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import obdKotlin.commands.Commands
 import obdKotlin.exceptions.ModsConflictException
 import obdKotlin.profiles.Profile
-import obdKotlin.utills.CommandUtil
 import java.lang.IllegalStateException
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -26,31 +25,21 @@ internal class ProtocolManager : BaseProtocolManager() {
 
     )
 
-    private val canOnCommandsSet: Set<String> = setOf(
-//        "${Commands.AtCommands.FlowControlOff.command}$POSTFIX",
-        Commands.AtCommands.AutoFormatCanFramesOff.command
-//        "${Commands.AtCommands.SetWakeUpMessagesOff.command}$POSTFIX"
-    )
-
-    private val canOffCommandsSet = setOf<String>(
-        Commands.AtCommands.FlowControlOn.command
-    )
-
     private var userProtocol: Protocol? = null
     private val settingsQueue = ConcurrentLinkedQueue<String>()
 
-    override suspend fun switchToStandardMode(extra: List<String>?) {
-        val isQueueEmpty = settingsQueue.isEmpty()
-        settingsQueue.addAll(canOffCommandsSet)
-        extra?.let {
-            it.forEach { command ->
-                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
-            }
-        }
-        if (isQueueEmpty) {
-            _obdCommandFlow.emit(settingsQueue.poll())
-        }
-    }
+//    override suspend fun switchToStandardMode(extra: List<String>?) {
+//        val isQueueEmpty = settingsQueue.isEmpty()
+//        settingsQueue.addAll(canOffCommandsSet)
+//        extra?.let {
+//            it.forEach { command ->
+//                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
+//            }
+//        }
+//        if (isQueueEmpty) {
+//            _obdCommandFlow.emit(settingsQueue.poll())
+//        }
+//    }
 
     @Throws(IllegalStateException::class)
     override suspend fun handleInitialAnswer() {
@@ -97,36 +86,9 @@ internal class ProtocolManager : BaseProtocolManager() {
     ) {
         this.strategy = strategy
         userProtocol = protocol
-        val isQueue = settingsQueue.isEmpty()
         prepare(extra)
-        if (isQueue) {
-            val command = if (warmStart) Commands.AtCommands.WarmStart.command else Commands.AtCommands.ResetAll.command
-            _obdCommandFlow.emit(command)
-        }
-    }
-
-    override suspend fun setHeaderAndReceiver(
-        headerAddress: String,
-        receiverAddress: String?,
-        isAlreadyCan: Boolean,
-        extra: List<String>?
-    ) {
-        if (!isAlreadyCan) {
-            settingsQueue.addAll(canOnCommandsSet)
-        }
-        val isQueueEmpty = settingsQueue.isEmpty()
-        settingsQueue.add("${Commands.AtCommands.SetHeader.command}$headerAddress\r")
-        receiverAddress?.let {
-            settingsQueue.add("${Commands.AtCommands.SetReceiverAdrFilter.command}$it\r")
-        }
-        extra?.let {
-            it.forEach { command ->
-                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
-            }
-        }
-        if (isQueueEmpty) {
-            sendNextSettings()
-        }
+        val command = if (warmStart) Commands.AtCommands.WarmStart.command else Commands.AtCommands.ResetAll.command
+        _obdCommandFlow.emit(command)
     }
 
     override suspend fun startWithProfile(profile: Profile) {
@@ -138,9 +100,13 @@ internal class ProtocolManager : BaseProtocolManager() {
         _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}\r")
     }
 
-    override suspend fun resetSession() {
+    override suspend fun resetSession(warmStart: Boolean) {
         strategy = null
-        _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}\r")
+        if (!warmStart) {
+            _obdCommandFlow.emit("${Commands.AtCommands.ResetAll.command}\r")
+        } else {
+            _obdCommandFlow.emit("${Commands.AtCommands.WarmStart.command}\r")
+        }
     }
 
     override fun isQueueEmpty(): Boolean = settingsQueue.isEmpty()
@@ -158,29 +124,25 @@ internal class ProtocolManager : BaseProtocolManager() {
      * Only when we start with strategy
      */
     private fun prepare(extra: List<String>?) {
-        if (userProtocol != null && strategy != ProtocolManagerStrategy.AUTO) {
+        if (userProtocol != Protocol.AUTOMATIC && strategy != ProtocolManagerStrategy.AUTO) {
             settingsQueue.addAll(standardSettingsSet)
             extra?.let {
                 standardSettingsSet.addAll(it)
             }
-        } else if (userProtocol == null && strategy == ProtocolManagerStrategy.AUTO) {
-            userProtocol = Protocol.AUTOMATIC
+        } else if (userProtocol == Protocol.AUTOMATIC && strategy == ProtocolManagerStrategy.AUTO) {
             settingsQueue.addAll(standardSettingsSet)
             extra?.let {
                 standardSettingsSet.addAll(it)
             }
         } else {
             resetStates()
-            throw ModsConflictException("For non-auto strategy, protocol should be provided")
+            throw ModsConflictException("Strategy: $strategy on UserProtocol: $userProtocol")
         }
     }
 
     override suspend fun setSetting(command: String) {
-        val handledCommand = CommandUtil.formatAT(command)
-        settingsQueue.add(handledCommand)
-        if (isQueueEmpty()) {
-            sendNextSettings()
-        }
+        settingsQueue.add(command)
+        sendNextSettings()
     }
 
     override suspend fun switchProtocol(protocol: Protocol) {
