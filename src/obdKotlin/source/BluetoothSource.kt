@@ -1,21 +1,23 @@
 package obdKotlin.source
 
+import android.bluetooth.BluetoothSocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import java.io.IOException
-import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class SocketSource(private val socket: Socket) : Source() {
+@SuppressWarnings("Unresolved reference")
+class BluetoothSource(private val socket: BluetoothSocket) : Source() {
 
-    private val input = socket.getInputStream()
-    private val output = socket.getOutputStream()
+    private val input = socket.inputStream
+    private val output = socket.outputStream
 
-    override suspend fun observeByteCommands() {
+    override suspend fun observeByteCommands(job: CoroutineScope) {
         outputByteFlow.onEach { sendToSource(it) }.collect()
+        readData(job)
     }
 
     private suspend fun sendToSource(bytes: ByteArray) {
@@ -23,25 +25,21 @@ class SocketSource(private val socket: Socket) : Source() {
             try {
                 output.write(bytes)
             } catch (e: IOException) {
-                // todo
+                e.printStackTrace()
             }
         }
     }
 
-    /*
-        Run this func only in coroutine or new thread
-     */
     private suspend fun readData(job: CoroutineScope) {
         while (job.isActive) {
             var localBuffer: ByteBuffer? = null
             try {
-                var capacity = input.available()
+                val capacity = input.available()
                 while (socket.isConnected && capacity > 0) {
                     localBuffer = ByteBuffer.allocate(capacity)
                     localBuffer.order(ByteOrder.BIG_ENDIAN)
                     val readUByte = input.read()
                     if (readUByte.toChar() == '>') {
-                        capacity = 0
                         break
                     } else {
                         localBuffer.put(readUByte.toByte())
@@ -51,7 +49,7 @@ class SocketSource(private val socket: Socket) : Source() {
                     sendToCommander(it)
                 }
             } catch (e: IOException) {
-                // todo
+                e.printStackTrace()
             }
         }
     }
