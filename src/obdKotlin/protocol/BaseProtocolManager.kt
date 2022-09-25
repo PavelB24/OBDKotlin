@@ -6,7 +6,9 @@ import obdKotlin.profiles.Profile
 abstract class BaseProtocolManager {
 
     abstract val obdCommandFlow: SharedFlow<String>
-    abstract val currentHeader: String?
+
+    var userProtocol: Protocol? = null
+        protected set
 
     abstract suspend fun handleInitialAnswer()
     abstract fun resetStates()
@@ -16,7 +18,7 @@ abstract class BaseProtocolManager {
     abstract suspend fun sendNextSettings(removeLast: Boolean = false, onEmptyQueue: (suspend() -> Unit)? = null)
     abstract suspend fun setSetting(command: String)
     abstract suspend fun switchProtocol(protocol: Protocol)
-    abstract suspend fun onRestart(
+    abstract suspend fun onStart(
         strategy: ProtocolManagerStrategy,
         warmStart: Boolean,
         protocol: Protocol? = null,

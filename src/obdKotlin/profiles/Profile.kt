@@ -2,6 +2,7 @@ package obdKotlin.profiles
 
 import obdKotlin.encoders.SpecialEncoder
 import obdKotlin.protocol.Protocol
+
 abstract class Profile(
     val protocol: Protocol?,
     val settingsAndParams: List<String>, // setting and params
@@ -100,17 +101,17 @@ abstract class Profile(
     companion object {
         fun getProfile(type: Profiles): Profile {
             return when (type) {
-                Profiles.BYD_F3 -> TODO()
-                Profiles.BYD_F3_ABS -> TODO()
-                Profiles.CHERRY_TIGO_DELPHI -> TODO()
-                Profiles.PEUGEOT_308_20120 -> TODO()
-                Profiles.BMW320E91AT -> TODO()
-                Profiles.FIAT_PRE_OBD -> TODO()
-                Profiles.YANVAR_72 -> TODO()
-                Profiles.YANVAR_5_11 -> TODO()
-                Profiles.ACCORD_24 -> TODO()
-                Profiles.LEXUS_RX330 -> TODO()
-                Profiles.UAZ_1797 -> TODO()
+                Profiles.BYD_F3 -> BydF3()
+                Profiles.BYD_F3_ABS -> BydF3Abs()
+                Profiles.CHERRY_TIGO_DELPHI -> CherryTiggoDelphi()
+                Profiles.PEUGEOT_308_20120 -> Peugeot308Y2010()
+                Profiles.BMW320E91AT -> BMW320E91AT()
+                Profiles.FIAT_PRE_OBD -> FiatPreObd()
+                Profiles.YANVAR_72 -> VazYanvar72()
+                Profiles.YANVAR_5_11 -> VazYanvar511()
+                Profiles.ACCORD_24 -> HondaAccord24()
+                Profiles.LEXUS_RX330 -> LexusRX330()
+                Profiles.UAZ_1797 -> Uaz1797()
             }
         }
     }

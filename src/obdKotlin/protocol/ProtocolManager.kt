@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import obdKotlin.commands.Commands
 import obdKotlin.exceptions.ModsConflictException
 import obdKotlin.profiles.Profile
-import java.lang.IllegalStateException
 import java.util.concurrent.ConcurrentLinkedQueue
 
 internal class ProtocolManager : BaseProtocolManager() {
@@ -13,7 +12,6 @@ internal class ProtocolManager : BaseProtocolManager() {
     private var strategy: ProtocolManagerStrategy? = null
     private val _obdCommandFlow = MutableSharedFlow<String>()
     override val obdCommandFlow: SharedFlow<String> = _obdCommandFlow
-    override val currentHeader: String? = null
 
     /**
      * should not edit in runtime
@@ -25,23 +23,8 @@ internal class ProtocolManager : BaseProtocolManager() {
 
     )
 
-    private var userProtocol: Protocol? = null
     private val settingsQueue = ConcurrentLinkedQueue<String>()
 
-//    override suspend fun switchToStandardMode(extra: List<String>?) {
-//        val isQueueEmpty = settingsQueue.isEmpty()
-//        settingsQueue.addAll(canOffCommandsSet)
-//        extra?.let {
-//            it.forEach { command ->
-//                settingsQueue.add(CommandUtil.formatAT(command.replace(" ", "")))
-//            }
-//        }
-//        if (isQueueEmpty) {
-//            _obdCommandFlow.emit(settingsQueue.poll())
-//        }
-//    }
-
-    @Throws(IllegalStateException::class)
     override suspend fun handleInitialAnswer() {
         strategy?.let {
             when (it) {
@@ -78,7 +61,7 @@ internal class ProtocolManager : BaseProtocolManager() {
         _obdCommandFlow.emit(Commands.AtCommands.GetVehicleProtoAsNumber.command)
     }
 
-    override suspend fun onRestart(
+    override suspend fun onStart(
         strategy: ProtocolManagerStrategy,
         warmStart: Boolean,
         protocol: Protocol?,

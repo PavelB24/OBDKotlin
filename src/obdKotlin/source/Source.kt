@@ -1,13 +1,19 @@
 package obdKotlin.source
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
 abstract class Source {
 
-    val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
+    companion object {
+        private const val BUFFER_CAPACITY = 100
+        private const val REPLAY = 1
+    }
 
-    val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow()
+    val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
 
-    abstract suspend fun observeByteCommands(job: CoroutineScope)
+    val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
+
+    abstract suspend fun observeByteCommands(scope: CoroutineScope)
 }
