@@ -10,38 +10,40 @@ import java.util.Locale
 
 internal object CommandUtil {
 
-    @Synchronized
     fun checkAndRout(
         canMode: Boolean,
         workMode: WorkMode,
         trimmedCommand: String
     ): CommandRout {
         if (workMode == WorkMode.IDLE) {
+            print(workMode)
             return CommandRout.PASS
         }
-        return when (trimmedCommand.uppercase(Locale.getDefault())) {
-            "Z" -> {
+        val command = trimmedCommand.uppercase(Locale.getDefault())
+        print(command)
+        return when {
+            command == "Z" -> {
                 return CommandRout.RESET
             }
-            "WS" -> {
+            command == "WS" -> {
                 return CommandRout.RESET
             }
-            "@1" -> {
+            command == "@1" -> {
                 return CommandRout.TO_CH
             }
-            "@2" -> {
+            command == "@2" -> {
                 return CommandRout.TO_CH
             }
-            "RV" -> {
+            command == "RV" -> {
                 return CommandRout.TO_CH
             }
-            "E1" -> {
+            command == "E1" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed" +
                         " in OBD Kotlin case it will break logic"
                 )
             }
-            "CAF1" -> {
+            command == "CAF1" -> {
                 if (canMode) {
                     throw WrongInitCommandException(
                         "$trimmedCommand is not allowed in can mode." +
@@ -49,31 +51,31 @@ internal object CommandUtil {
                     )
                 } else CommandRout.PASS
             }
-            "PC" -> {
+            command == "PC" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
                         " Hint: To to using this in with tuned connection may occurs errors"
                 )
             }
-            "FI" -> {
+            command == "FI" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
                         " Hint: This command should go with one of init methods ${Protocol.ISO_14230_4_FASTINIT.name}"
                 )
             }
-            "SP" -> {
+            command.contains("SP") -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
                         " Hint: To switch protocol use start() or profile"
                 )
             }
-            "TP" -> {
+            command.contains("TP") -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
                         " Hint: To switch protocol use startWith.. or profile"
                 )
             }
-            "D" -> {
+            command == "D" -> {
                 throw WrongInitCommandException(
                     "$trimmedCommand is not allowed." +
                         " Using this  with tuned connection may occurs errors. " +

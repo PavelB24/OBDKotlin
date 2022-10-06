@@ -117,7 +117,7 @@ internal class ProtocolManager : BaseProtocolManager() {
             extra?.let {
                 standardSettingsSet.addAll(it)
             }
-        } else {
+        } else if ((userProtocol == null || strategy == null) && (userProtocol == Protocol.AUTOMATIC && strategy != ProtocolManagerStrategy.AUTO)) {
             resetStates()
             throw ModsConflictException("Strategy: $strategy on UserProtocol: $userProtocol")
         }

@@ -1,9 +1,7 @@
 package obdKotlin
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flow
 import java.lang.StringBuilder
+import java.util.*
 
 @OptIn(ExperimentalUnsignedTypes::class)
 internal fun UByteArray.toBinaryArray(): CharArray {
@@ -26,20 +24,6 @@ internal fun Int.toBinary(len: Int = 1): String {
     return String.format("%" + len + "s", this.toString(2)).replace(" ".toRegex(), "0")
 }
 
-internal fun <T> Flow<T>.mix(other: Flow<T>, other2: Flow<T>? = null): Flow<T> = flow {
-    this@mix.collectLatest { value ->
-        this.emit(value)
-    }
-    other.collectLatest { value ->
-        this.emit(value)
-    }
-    other2?.let {
-        it.collectLatest { value ->
-            this.emit(value)
-        }
-    }
-}
-
 internal fun Char.toBoolean(): Boolean {
     if (this != '1' && this != '0') {
         throw TypeCastException()
@@ -57,7 +41,7 @@ internal fun Int.toOneCharHex(): String {
 
 internal fun Int.toThreeCharHex(): String {
     val hex = Integer.toHexString(this)
-    return if (this < 256) "0$hex" else hex
+    return if (this < 256) "0${hex.uppercase(Locale.getDefault())}" else hex.uppercase(Locale.getDefault())
 }
 
 internal fun String.hexToBinaryList(): List<String> {

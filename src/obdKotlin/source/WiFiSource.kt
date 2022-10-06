@@ -30,7 +30,9 @@ class WiFiSource(
 
     override suspend fun observeByteCommands(scope: CoroutineScope) {
         scope.launch {
-            outputByteFlow.onEach { sendToSource(it) }.collect()
+            outputByteFlow.onEach {
+                sendToSource(it)
+            }.collect()
         }
         scope.launch {
             connect()

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
@@ -24,7 +25,6 @@ import obdKotlin.exceptions.NoSourceProvidedException
 import obdKotlin.exceptions.WrongInitCommandException
 import obdKotlin.exceptions.WrongMessageTypeException
 import obdKotlin.messages.Message
-import obdKotlin.mix
 import obdKotlin.profiles.Profile
 import obdKotlin.protocol.BaseProtocolManager
 import obdKotlin.protocol.Protocol
@@ -71,30 +71,45 @@ internal class OBDCommander(
         commandHandler
     ) {
         this.source = source
+        observeInput()
+    }
+
+    private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    init {
+        mergeCommands()
+        observeCommands()
     }
 
     private var systemEventListener: SystemEventListener? = null
     private val extendedMode = AtomicBoolean(false)
+
     private var source: Source? = null
-    private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     var workMode = WorkMode.IDLE
         private set
 
-    override val encodedDataMessages: SharedFlow<Message?> = atDecoder.eventFlow
-        .mix(pinDecoder.eventFlow)
+    override val encodedDataMessages: SharedFlow<Message?> = merge(atDecoder.eventFlow, pinDecoder.eventFlow)
         .buffer(BUFFER_CAPACITY)
         .shareIn(commanderScope, SharingStarted.Eagerly)
 
-    init {
-        observeInput()
-        observeCommands()
+    private fun mergeCommands() {
+        commanderScope.launch {
+            merge(protocolManager.obdCommandFlow, commandHandler.commandFlow)
+                .map {
+                    it.toByteArray(Charsets.US_ASCII)
+                }.onEach {
+                    println(it.size)
+                    source?.outputByteFlow?.emit(it)
+                }.collect()
+        }
     }
 
     private fun observeInput() {
         source?.let {
             commanderScope.launch {
                 it.inputByteFlow.onEach {
-                    manageInputData(it)
+                    if (it.isNotEmpty()) {
+                        manageInputData(it)
+                    }
                 }.collect()
             }
         }
@@ -210,13 +225,8 @@ internal class OBDCommander(
 
     private fun observeCommands() {
         source?.let { source ->
-            commanderScope.launch(Dispatchers.IO) {
-                source.observeByteCommands(this)
-                protocolManager.obdCommandFlow.mix(commandHandler.commandFlow).map {
-                    it.toByteArray(Charsets.US_ASCII)
-                }.onEach {
-                    source.outputByteFlow.emit(it)
-                }.collect()
+            commanderScope.launch {
+                source.observeByteCommands(commanderScope)
             }
         }
     }

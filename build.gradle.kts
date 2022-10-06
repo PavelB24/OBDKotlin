@@ -13,7 +13,10 @@ plugins {
 }
 
 sourceSets.main {
-    java.srcDirs("src", "test")
+    java.srcDirs("src")
+}
+sourceSets.test {
+    java.srcDirs("test")
 }
 
 repositories {
@@ -21,6 +24,8 @@ repositories {
 }
 
 dependencies {
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
+    testImplementation("junit:junit:4.13.2")
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-common:1.7.20-RC")
@@ -29,5 +34,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
     implementation("com.google.guava:guava:31.1-jre")
     api("org.apache.commons:commons-math3:3.6.1")
+    testImplementation("junit:junit:4.13.2")
     compileOnly("com.google.android:android:4.1.1.4")
 }

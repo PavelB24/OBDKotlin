@@ -8,13 +8,14 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 class BluetoothSource(private val socket: BluetoothSocket) : Source() {
 
     companion object {
         private const val END_VALUE: Byte = -1
+        private const val CR_BYTE_VALUE: Byte = 32
         private const val SPACE_BYTE_VALUE: Byte = 13
+        private const val NULL_BYTE_VALUE: Byte = 0
     }
 
     private val input = socket.inputStream
@@ -41,30 +42,20 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
 
     private suspend fun readData(job: CoroutineScope) {
         while (job.isActive) {
-            var localBuffer: ByteBuffer? = null
+            val localBuffer: ByteBuffer = ByteBuffer.allocate(64)
             try {
-                val capacity = input.available()
-                while (socket.isConnected && capacity > 0) {
-                    localBuffer = ByteBuffer.allocate(capacity)
-                    localBuffer.order(ByteOrder.BIG_ENDIAN)
-                    val readUByte = input.read().toByte()
+                while (socket.isConnected) {
+                    val readUByte = input.read()
                     if (readUByte.toChar() == '>') {
-                        localBuffer.put(readUByte)
+                        localBuffer.put(readUByte.toByte())
                         break
-                    } else if (readUByte == END_VALUE) {
+                    } else if (readUByte.toByte() == END_VALUE) {
                         break
                     } else {
-                        localBuffer.put(readUByte)
+                        localBuffer.put(readUByte.toByte())
                     }
                 }
-                localBuffer?.let {
-                    if (!it.hasRemaining()) {
-                        sendToCommander(it)
-                    } else {
-                        it.flip()
-                        it.clear()
-                    }
-                }
+                sendToCommander(localBuffer)
             } catch (e: IOException) {
                 e.printStackTrace()
             }
@@ -75,7 +66,7 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
         buffer.flip()
         val array = buffer.array()
         val filteredArray = array.filter {
-            it != SPACE_BYTE_VALUE
+            it != SPACE_BYTE_VALUE && it != NULL_BYTE_VALUE && it != CR_BYTE_VALUE
         }.toByteArray()
         inputByteFlow.emit(filteredArray)
         buffer.clear()
