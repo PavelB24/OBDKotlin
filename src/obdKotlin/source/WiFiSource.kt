@@ -36,7 +36,7 @@ class WiFiSource(
         }
         scope.launch {
             connect()
-            init(scope)
+            init(this)
         }
     }
 

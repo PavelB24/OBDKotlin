@@ -1,5 +1,6 @@
 package obdKotlin.protocol
 
+import android.util.Log
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import obdKotlin.commands.Commands
@@ -37,9 +38,9 @@ internal class ProtocolManager : BaseProtocolManager() {
 
     private suspend fun setProto() {
         if (userProtocol != null) {
-            _obdCommandFlow.emit("${Commands.AtCommands.SetProto}${userProtocol!!.hexOrdinal}\r")
+            _obdCommandFlow.emit("${Commands.AtCommands.SetProto.command}${userProtocol!!.hexOrdinal}\r")
         } else {
-            _obdCommandFlow.emit("${Commands.AtCommands.SetProto}${Protocol.AUTOMATIC.hexOrdinal}\r")
+            _obdCommandFlow.emit("${Commands.AtCommands.SetProto.command}${Protocol.AUTOMATIC.hexOrdinal}\r")
         }
     }
 
@@ -71,6 +72,7 @@ internal class ProtocolManager : BaseProtocolManager() {
         userProtocol = protocol
         prepare(extra)
         val command = if (warmStart) Commands.AtCommands.WarmStart.command else Commands.AtCommands.ResetAll.command
+        Log.d("@@@", "on start $command")
         _obdCommandFlow.emit(command)
     }
 

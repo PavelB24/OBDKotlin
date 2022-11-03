@@ -1,5 +1,6 @@
 package obdKotlin.core
 
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -72,12 +73,13 @@ internal class OBDCommander(
     ) {
         this.source = source
         observeInput()
+        observeSource()
     }
 
     private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     init {
-        mergeCommands()
         observeCommands()
+        observeSource()
     }
 
     private var systemEventListener: SystemEventListener? = null
@@ -91,15 +93,29 @@ internal class OBDCommander(
         .buffer(BUFFER_CAPACITY)
         .shareIn(commanderScope, SharingStarted.Eagerly)
 
-    private fun mergeCommands() {
+    private fun observeCommands() {
+        Log.d("@@@", "merge")
         commanderScope.launch {
-            merge(protocolManager.obdCommandFlow, commandHandler.commandFlow)
+            Log.d("@@@", "corout")
+            protocolManager.obdCommandFlow
                 .map {
+                    Log.d("@@@", "MAPPING $it")
                     it.toByteArray(Charsets.US_ASCII)
                 }.onEach {
+                    Log.d(
+                        "@@@",
+                        it.size.toString()
+                    )
                     println(it.size)
                     source?.outputByteFlow?.emit(it)
                 }.collect()
+        }
+        commanderScope.launch {
+            commandHandler.commandFlow.map {
+                it.toByteArray(Charsets.US_ASCII)
+            }.onEach {
+                source?.inputByteFlow?.emit(it)
+            }.collect()
         }
     }
 
@@ -116,6 +132,7 @@ internal class OBDCommander(
     }
 
     private suspend fun manageInputData(bytes: ByteArray) {
+        Log.d("@@@", "MANAGE INPUT " + bytes.decodeToString())
         when (workMode) {
             WorkMode.IDLE -> {
                 doOnIdle(bytes)
@@ -223,9 +240,12 @@ internal class OBDCommander(
         systemEventListener?.onWorkModeChanged(workMode)
     }
 
-    private fun observeCommands() {
+    private fun observeSource() {
+        Log.d("@@@", "Invoke")
         source?.let { source ->
+            Log.d("@@@", "Source eys")
             commanderScope.launch {
+                Log.d("@@@", "obs")
                 source.observeByteCommands(commanderScope)
             }
         }
@@ -309,6 +329,7 @@ internal class OBDCommander(
     }
 
     private fun onReset() {
+        Log.d("@@@", "on reset")
         commandHandler.removeCommand()
         protocolManager.resetStates()
         switchExtended(false)
@@ -393,11 +414,10 @@ internal class OBDCommander(
     }
 
     override fun bindSource(source: Source, resetStates: Boolean) {
-        // переписать
         onNewSource(resetStates)
         this.source = source
         observeInput()
-        observeCommands()
+        observeSource()
     }
 
     private fun switchExtended(mode: Boolean) {
