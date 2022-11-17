@@ -46,7 +46,7 @@ sealed class Message() {
     data class RPM(val rpm: Int) : Message()
     data class OxygenSensorsPresents(val sensors: Map<Pair<Int, Int>, Boolean>) : Message()
     data class MafAirFlowRate(val rateGramPerSec: Float) : Message()
-    data class OdometerData(val currentKms: Double) : Message()
+    data class OdometerData(val currentKms: Float) : Message()
     data class AirToFuelRatio(val ratio: Double) : Message()
 
     data class FuelRate(val fuelRatePerHour: Int) : Message()

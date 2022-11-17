@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.WorkMode
 import obdKotlin.messages.Message
 import obdKotlin.protocol.Protocol
+import obdKotlin.utils.CommandUtil
 
 class AtDecoder() : Decoder() {
 

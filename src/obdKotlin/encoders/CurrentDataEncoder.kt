@@ -50,7 +50,6 @@ import obdKotlin.toBinary
 import obdKotlin.toBinaryArray
 import obdKotlin.toBoolean
 import obdKotlin.toHex
-import kotlin.math.pow
 
 class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(eventFlow) {
 
@@ -235,11 +234,7 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
     }
 
     private fun decodeOdometer(bytesBody: ByteArray): Message {
-        val numA = bytesBody.decodeToString(0, 2).hexToInt()
-        val numB = bytesBody.decodeToString(2, 4).hexToInt()
-        val numC = bytesBody.decodeToString(4, 6).hexToInt()
-        val numD = bytesBody.decodeToString(6, 8).hexToInt()
-        val kilometers = (numA * (2.0.pow(24.0)) + numB * (2.0.pow(16.0)) + numC * (2.0.pow(8.0)) + numD) / 10
+        val kilometers = (bytesBody.decodeToString().toUInt(16) / 10u).toFloat()
         return Message.OdometerData(kilometers)
     }
 
@@ -416,25 +411,19 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
             6 -> 161
             else -> 193
         }
-        val binary = dataBytes.toUByteArray().toBinaryArray()
         val map = mutableMapOf<String, Boolean>()
-        for (i in binary.indices) {
-            map.put((i + pidOffset).toHex(), binary[i].toBoolean())
+//        val binary = dataBytes.toUByteArray().toBinaryArray()
+//        for (i in binary.indices) {
+//            map.put((i + pidOffset).toHex(), binary[i].toBoolean())
+//        }
+
+        val total = dataBytes.decodeToString().toUInt(16)
+        for (i in 31 downTo 0) {
+            val bit = total shl i and 1U
+            val isSupported = bit == 1U
+            map[(i + pidOffset).toHex()] = isSupported
         }
-//        map[Commands.PidCommands.STATUS_SINCE_DTC_CLEARED] = binary[0].toBoolean()
-//        map[Commands.PidCommands.ENGINE_LOAD] = binary[3].toBoolean()
-//        map[Commands.PidCommands.COOLANT_TEMPERATURE] = binary[4].toBoolean()
-//        map[Commands.PidCommands.FUEL_PRESSURE] = binary[9].toBoolean()
-//        map[Commands.PidCommands.MAP_VAL] = binary[10].toBoolean()
-//        map[Commands.PidCommands.ENGINE_RPM] = binary[11].toBoolean()
-//        map[Commands.PidCommands.CAR_SPEED] = binary[12].toBoolean()
-//        map[Commands.PidCommands.TIMING_ADVANCE] = binary[13].toBoolean()
-//        map[Commands.PidCommands.INTAKE_AIR_TEMP] = binary[14].toBoolean()
-//        map[Commands.PidCommands.MAP_AIR_FLOW] = binary[15].toBoolean()
-//        map[Commands.PidCommands.THROTTLE_POSITION] = binary[16].toBoolean()
-//        map[Commands.PidCommands.HAS_OXYGEN_SENSORS] = binary[18].toBoolean()
-//        map[Commands.PidCommands.ENGINE_RUN_TIME] = binary[30].toBoolean()
-        return Message.SupportedCommands(map, pidOffset.toHex(), binary.size.toHex())
+        return Message.SupportedCommands(map, pidOffset.toHex(), (pidOffset + 32).toHex())
     }
 
     private fun decodeStatusSinceDTCCleared(dataBytes: ByteArray): Message {
