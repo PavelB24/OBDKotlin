@@ -47,7 +47,6 @@ import obdKotlin.hexToBinary
 import obdKotlin.hexToInt
 import obdKotlin.messages.Message
 import obdKotlin.toBinary
-import obdKotlin.toBinaryArray
 import obdKotlin.toBoolean
 import obdKotlin.toHex
 
