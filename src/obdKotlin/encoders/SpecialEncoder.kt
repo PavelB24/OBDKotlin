@@ -2,7 +2,6 @@ package obdKotlin.encoders
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.decoders.EncodingState
-import obdKotlin.hexToInt
 import obdKotlin.messages.Message
 import obdKotlin.profiles.Profile
 import obdKotlin.toHex
@@ -37,7 +36,7 @@ abstract class SpecialEncoder {
 
     private suspend fun decodeFirstMessage(message: ByteArray): EncodingState {
         if (message.size > 16) return EncodingState.Unsuccessful(message.decodeToString())
-        val expect = message.decodeToString(1, 4).hexToInt()
+        val expect = message.decodeToString(1, 4).toInt(16)
         expectedFrames = if ((expect - 6) % 7 == 0) (expect - 6) / 7 else (expect - 6) / 7 + 1
         buffer = ByteBuffer.allocate(expect * 2)
         val cleanData = message.copyOfRange(5, message.size)

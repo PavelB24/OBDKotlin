@@ -50,10 +50,6 @@ internal fun String.hexToBinaryList(): List<String> {
     return intList.map { Integer.toBinaryString(it) }
 }
 
-internal fun String.hexToInt(): Int {
-    return this.toInt(16)
-}
-
 internal fun String.hexToBinary(): CharArray {
     return String.format(
         "%" + 8 + "s",

@@ -6,5 +6,5 @@ import obdKotlin.messages.Message
 
 abstract class Encoder(val eventFlow: MutableSharedFlow<Message?>) {
 
-    abstract suspend fun handleBytes(bytesBody: ByteArray, pid: String?): EncodingState
+    abstract suspend fun handleBytes(bytesBody: ByteArray, pid: Int?): EncodingState
 }

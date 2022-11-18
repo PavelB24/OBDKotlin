@@ -11,7 +11,7 @@ class TroubleCodesEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(even
     private val strBuilder = StringBuilder()
     private val codesHash = mutableListOf<String>()
 
-    override suspend fun handleBytes(bytesBody: ByteArray, pid: String?): EncodingState {
+    override suspend fun handleBytes(bytesBody: ByteArray, pid: Int?): EncodingState {
         val isLast = bytesBody.last() == PinAnswerDecoder.END_BYTE
         val limit = if (isLast) bytesBody.size - 1 else bytesBody.size
         val answer = bytesBody.decodeToString(0, limit).chunked(4)

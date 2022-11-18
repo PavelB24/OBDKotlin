@@ -74,6 +74,9 @@ class WiFiSource(
             val data = ByteArray(read)
             receiveBuffer.flip()
             System.arraycopy(receiveBuffer.array(), 0, data, 0, read)
+            data.filter {
+                it != SPACE_BYTE_VALUE && it != NULL_BYTE_VALUE && it != CR_BYTE_VALUE
+            }.toByteArray()
             inputByteFlow.emit(data)
         }
     }

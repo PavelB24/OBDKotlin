@@ -12,13 +12,6 @@ import java.nio.ByteBuffer
 
 class BluetoothSource(private val socket: BluetoothSocket) : Source() {
 
-    companion object {
-        private const val END_VALUE: Byte = -1
-        private const val CR_BYTE_VALUE: Byte = 32
-        private const val SPACE_BYTE_VALUE: Byte = 13
-        private const val NULL_BYTE_VALUE: Byte = 0
-    }
-
     private val input = socket.inputStream
     private val output = socket.outputStream
 

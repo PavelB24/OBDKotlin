@@ -77,7 +77,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             Commands.PidMod.SHOW_CURRENT -> {
                 currentDataEncoder.handleBytes(
                     message.copyOfRange(startIndex + 4, message.size),
-                    decoded.substring(startIndex + 2, startIndex + 4)
+                    decoded.substring(startIndex + 2, startIndex + 4).toInt(16)
                 )
             }
 

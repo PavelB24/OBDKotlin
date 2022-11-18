@@ -68,7 +68,7 @@ class ExtensionsKtTest {
 
     @Test
     fun hexToInt() {
-        assertEquals(255, "ff".hexToInt())
+        assertEquals(255, "ff".toInt(16))
     }
 
     @Test
