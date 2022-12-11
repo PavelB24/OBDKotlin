@@ -50,7 +50,8 @@ internal class OBDCommander(
     private val warmStarts: Boolean,
     private val atDecoder: Decoder,
     private val pinDecoder: SpecialEncoderHost,
-    private val commandHandler: BaseCommandHandler
+    private val commandHandler: BaseCommandHandler,
+    private val eventListener: SystemEventListener?
 ) : Commander(protocolManager) {
 
     companion object {
@@ -63,13 +64,15 @@ internal class OBDCommander(
         atDecoder: Decoder,
         pinDecoderEntity: SpecialEncoderHost,
         commandHandler: BaseCommandHandler,
+        eventListener: SystemEventListener?,
         source: Source
     ) : this(
         protoManager,
         warmStarts,
         atDecoder,
         pinDecoderEntity,
-        commandHandler
+        commandHandler,
+        eventListener
     ) {
         this.source = source
         observeInput()
@@ -82,7 +85,6 @@ internal class OBDCommander(
         observeSource()
     }
 
-    private var systemEventListener: SystemEventListener? = null
     private val extendedMode = AtomicBoolean(false)
 
     private var source: Source? = null
@@ -94,18 +96,11 @@ internal class OBDCommander(
         .shareIn(commanderScope, SharingStarted.Eagerly)
 
     private fun observeCommands() {
-        Log.d("@@@", "merge")
         commanderScope.launch {
-            Log.d("@@@", "corout")
             protocolManager.obdCommandFlow
                 .map {
-                    Log.d("@@@", "MAPPING $it")
                     it.toByteArray(Charsets.US_ASCII)
                 }.onEach {
-                    Log.d(
-                        "@@@",
-                        it.size.toString()
-                    )
                     println(it.size)
                     source?.outputByteFlow?.emit(it)
                 }.collect()
@@ -156,7 +151,7 @@ internal class OBDCommander(
         when (val answer = pinDecoder.decode(bytes, workMode)) {
             is EncodingState.Successful -> commandHandler.sendNextCommand(false)
             is EncodingState.Unsuccessful -> {
-                systemEventListener?.onDecodeError(
+                eventListener?.onDecodeError(
                     FailOn(
                         workMode,
                         answer.onAnswer,
@@ -237,7 +232,7 @@ internal class OBDCommander(
 
     private fun changeModeAndInvokeModeCallBack(mode: WorkMode) {
         workMode = mode
-        systemEventListener?.onWorkModeChanged(workMode)
+        eventListener?.onWorkModeChanged(workMode)
     }
 
     private fun observeSource() {
@@ -246,7 +241,8 @@ internal class OBDCommander(
             Log.d("@@@", "Source eys")
             commanderScope.launch {
                 Log.d("@@@", "obs")
-                source.observeByteCommands(commanderScope)
+                val onError = if (eventListener != null) eventListener::onSourceError else null
+                source.observeByteCommands(commanderScope, onError)
             }
         }
     }
@@ -255,7 +251,7 @@ internal class OBDCommander(
     private fun handleNegativeAnswer(code: String) {
         when (workMode) {
             WorkMode.IDLE -> {
-                systemEventListener?.onDecodeError(FailOn(workMode, code, null))
+                eventListener?.onDecodeError(FailOn(workMode, code, null))
             }
 
             WorkMode.PROTOCOL -> {
@@ -296,7 +292,6 @@ internal class OBDCommander(
 
     override fun start(
         protocol: Protocol?,
-        systemEventListener: SystemEventListener?,
         extra: List<String>?,
         specialEncoder: SpecialEncoder?,
         extendedMode: Boolean
@@ -305,7 +300,6 @@ internal class OBDCommander(
         onReset()
         commanderScope.launch {
             switchExtended(extendedMode)
-            setListener(systemEventListener)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
             }
@@ -314,10 +308,6 @@ internal class OBDCommander(
             }
             protocolManager.onStart(ProtocolManagerStrategy.TRY, warmStarts, protocol, filteredExtra)
         }
-    }
-
-    private fun setListener(systemEventListener: SystemEventListener?) {
-        this.systemEventListener = systemEventListener
     }
 
     override suspend fun resetSettings() {
@@ -333,13 +323,11 @@ internal class OBDCommander(
         commandHandler.removeCommand()
         protocolManager.resetStates()
         switchExtended(false)
-        systemEventListener = null
         changeModeAndInvokeModeCallBack(WorkMode.IDLE)
     }
 
     @Throws(NoSourceProvidedException::class)
     override fun startWithAuto(
-        systemEventListener: SystemEventListener?,
         extra: List<String>?,
         specialEncoder: SpecialEncoder?,
         extendedMode: Boolean
@@ -348,7 +336,6 @@ internal class OBDCommander(
         onReset()
         commanderScope.launch {
             switchExtended(extendedMode)
-            setListener(systemEventListener)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
             }
@@ -362,7 +349,6 @@ internal class OBDCommander(
     @Throws(NoSourceProvidedException::class)
     override fun startAndRemember(
         protocol: Protocol?,
-        systemEventListener: SystemEventListener?,
         extra: List<String>?,
         specialEncoder: SpecialEncoder?,
         extendedMode: Boolean
@@ -371,7 +357,6 @@ internal class OBDCommander(
         onReset()
         commanderScope.launch {
             switchExtended(extendedMode)
-            setListener(systemEventListener)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
             }
@@ -424,7 +409,7 @@ internal class OBDCommander(
         extendedMode.set(mode)
         commandHandler.extended.set(mode)
         pinDecoder.extended.set(mode)
-        systemEventListener?.onSwitchMode(mode)
+        eventListener?.onSwitchMode(mode)
     }
 
     /**
@@ -459,11 +444,10 @@ internal class OBDCommander(
      * to receiving commands.
      * To pass parameters to the method, create a Profile class with the desired parameters
      */
-    override fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?) {
+    override fun startWithProfile(profile: Profile) {
         checkSource()
         onReset()
         commanderScope.launch {
-            this@OBDCommander.systemEventListener = systemEventListener
             if (profile.encoder != null) {
                 switchExtended(true)
             }

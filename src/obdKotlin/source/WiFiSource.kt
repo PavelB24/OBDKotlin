@@ -28,7 +28,7 @@ class WiFiSource(
 
     private val socket: SocketChannel = SocketChannel.open()
 
-    override suspend fun observeByteCommands(scope: CoroutineScope) {
+    override suspend fun observeByteCommands(scope: CoroutineScope, error: (() -> Unit)?) {
         scope.launch {
             outputByteFlow.onEach {
                 sendToSource(it)
@@ -36,11 +36,11 @@ class WiFiSource(
         }
         scope.launch {
             connect()
-            init(this)
+            init(this, error)
         }
     }
 
-    private suspend fun init(scope: CoroutineScope) {
+    private suspend fun init(scope: CoroutineScope, error: (() -> Unit)?) {
         while (scope.isActive) {
             try {
                 selector.select(TIMEOUT)
@@ -62,6 +62,7 @@ class WiFiSource(
                     keys.remove()
                 }
             } catch (e: Exception) {
+                error?.invoke()
                 e.printStackTrace()
             }
         }

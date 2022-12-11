@@ -21,7 +21,7 @@ abstract class Commander(protoManager: BaseProtocolManager) {
 
     abstract val encodedDataMessages: SharedFlow<Message?>
 
-    val protocolManager: BaseProtocolManager = protoManager
+    internal val protocolManager: BaseProtocolManager = protoManager
 
     /**
      *  Header Address for ATSH receiver Address for ATCRA
@@ -31,7 +31,6 @@ abstract class Commander(protoManager: BaseProtocolManager) {
     @Throws(NoSourceProvidedException::class)
     abstract fun startAndRemember(
         protocol: Protocol?,
-        systemEventListener: SystemEventListener?,
         extra: List<String>?,
         specialEncoder: SpecialEncoder?,
         extendedMode: Boolean = false
@@ -39,7 +38,6 @@ abstract class Commander(protoManager: BaseProtocolManager) {
 
     @Throws(NoSourceProvidedException::class)
     abstract fun startWithAuto(
-        systemEventListener: SystemEventListener? = null,
         extra: List<String>? = null,
         specialEncoder: SpecialEncoder? = null,
         extendedMode: Boolean = false
@@ -47,7 +45,6 @@ abstract class Commander(protoManager: BaseProtocolManager) {
 
     abstract fun start(
         protocol: Protocol? = null,
-        systemEventListener: SystemEventListener? = null,
         extra: List<String>? = null,
         specialEncoder: SpecialEncoder? = null,
         extendedMode: Boolean = false
@@ -60,7 +57,7 @@ abstract class Commander(protoManager: BaseProtocolManager) {
     abstract suspend fun resetSettings()
 
     abstract fun sendCommand(command: String, repeatTime: Long? = null)
-    abstract fun startWithProfile(profile: Profile, systemEventListener: SystemEventListener?)
+    abstract fun startWithProfile(profile: Profile)
     abstract fun stop()
 
     class Builder {
@@ -71,6 +68,7 @@ abstract class Commander(protoManager: BaseProtocolManager) {
         private var atDecoderClass: Decoder = AtDecoder()
         private var pinDecoderClass: SpecialEncoderHost = PinAnswerDecoder()
         private var commandHandler: BaseCommandHandler = CommandHandler()
+        private var eventListener: SystemEventListener? = null
 
         private fun resetStates() {
             source = null
@@ -101,6 +99,10 @@ abstract class Commander(protoManager: BaseProtocolManager) {
             return this
         }
 
+        fun setEventListener(eventListener: SystemEventListener) {
+            this.eventListener = eventListener
+        }
+
         fun useWarmStarts(): Builder {
             useWS = true
             return this
@@ -113,9 +115,9 @@ abstract class Commander(protoManager: BaseProtocolManager) {
 
         fun build(): Commander {
             val commander = if (source != null) {
-                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler, source!!)
+                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler, eventListener, source!!)
             } else {
-                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler)
+                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler, eventListener)
             }
             return commander
         }

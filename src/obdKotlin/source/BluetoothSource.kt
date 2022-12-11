@@ -1,7 +1,6 @@
 package obdKotlin.source
 
 import android.bluetooth.BluetoothSocket
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -15,16 +14,14 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
     private val input = socket.inputStream
     private val output = socket.outputStream
 
-    override suspend fun observeByteCommands(scope: CoroutineScope) {
+    override suspend fun observeByteCommands(scope: CoroutineScope, error: (() -> Unit)?) {
         scope.launch {
-            Log.d("@@@", "LAUNCH")
             outputByteFlow.onEach {
-                Log.d("@@@", it.size.toString() + "SOURCE")
                 sendToSource(it)
             }.collect()
         }
         scope.launch {
-            readData(this)
+            readData(this, error)
         }
     }
 
@@ -38,7 +35,7 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
         }
     }
 
-    private suspend fun readData(job: CoroutineScope) {
+    private suspend fun readData(job: CoroutineScope, error: (() -> Unit)?) {
         while (job.isActive) {
             val localBuffer: ByteBuffer = ByteBuffer.allocate(64)
             try {
@@ -55,6 +52,7 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
                 }
                 sendToCommander(localBuffer)
             } catch (e: IOException) {
+                error?.invoke()
                 e.printStackTrace()
             }
         }

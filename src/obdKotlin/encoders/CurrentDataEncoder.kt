@@ -188,7 +188,6 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
         val gear = (256 * hex.toInt(16)) / 1000.0
         return Message.ActualGear(gear)
     }
-
     private fun decodeOdometer(bytesBody: ByteArray): Message {
         val kilometers = (bytesBody.decodeToString().toUInt(16) / 10u).toFloat()
         return Message.OdometerData(kilometers)
@@ -283,7 +282,7 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
     }
 
     private fun oxygenSensorsPresents(bytesBody: ByteArray): Message {
-        //todo refact
+        // todo refact
         val binary = bytesBody.decodeToString(0, 2).toInt(16).toBinary(8).toCharArray()
         val map = mutableMapOf<Pair<Int, Int>, Boolean>()
         for (i in binary.indices) {
@@ -376,7 +375,7 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
     }
 
     private fun decodeStatusSinceDTCCleared(dataBytes: ByteArray): Message {
-        //todo refact
+        // todo refact
         val bitsOfAByte = dataBytes.first().toUByte().toBinary(8).toCharArray()
         val bitsOfBByte = dataBytes[1].toUByte().toBinary(8).toCharArray()
         val milIsOn = bitsOfAByte.last().toBoolean()

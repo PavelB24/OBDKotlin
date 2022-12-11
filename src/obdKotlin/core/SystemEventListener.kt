@@ -8,7 +8,7 @@ interface SystemEventListener {
 
     fun onDecodeError(fail: FailOn?)
 
-    fun onConnectionLost()
+    fun onSourceError()
 
     fun onSwitchMode(extendedMode: Boolean)
 }

@@ -19,5 +19,5 @@ abstract class Source {
 
     val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
 
-    abstract suspend fun observeByteCommands(scope: CoroutineScope)
+    abstract suspend fun observeByteCommands(scope: CoroutineScope, error: (() -> Unit)?)
 }
