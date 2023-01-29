@@ -14,5 +14,5 @@ interface SpecialEncoderHost {
 
     suspend fun decode(message: ByteArray, workMode: WorkMode): EncodingState
 
-    fun setSpecialEncoder(encoder: SpecialEncoder)
+    fun setSpecialEncoder(encoder: SpecialEncoder?)
 }

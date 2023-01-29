@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import obdKotlin.core.SystemEventListener
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -28,7 +29,7 @@ class WiFiSource(
 
     private val socket: SocketChannel = SocketChannel.open()
 
-    override suspend fun observeByteCommands(scope: CoroutineScope, error: (() -> Unit)?) {
+    override suspend fun observeByteCommands(scope: CoroutineScope, error: ((SystemEventListener.SourceType) -> Unit)?) {
         scope.launch {
             outputByteFlow.onEach {
                 sendToSource(it)
@@ -40,7 +41,19 @@ class WiFiSource(
         }
     }
 
-    private suspend fun init(scope: CoroutineScope, error: (() -> Unit)?) {
+    override fun disconnect() {
+        try {
+            socket.close()
+            selector.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private suspend fun init(
+        scope: CoroutineScope,
+        error: ((SystemEventListener.SourceType) -> Unit)?
+    ) {
         while (scope.isActive) {
             try {
                 selector.select(TIMEOUT)
@@ -62,7 +75,9 @@ class WiFiSource(
                     keys.remove()
                 }
             } catch (e: Exception) {
-                error?.invoke()
+                selector.close()
+                socket.close()
+                error?.invoke(SystemEventListener.SourceType.WIFI)
                 e.printStackTrace()
             }
         }

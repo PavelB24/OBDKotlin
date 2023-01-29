@@ -39,10 +39,7 @@ internal fun Int.toOneCharHex(): String {
     return if (this >= 16) Integer.toHexString(this % 16) else Integer.toHexString(this)
 }
 
-internal fun Int.toThreeCharHex(): String {
-    val hex = Integer.toHexString(this)
-    return if (this < 256) "0${hex.uppercase(Locale.getDefault())}" else hex.uppercase(Locale.getDefault())
-}
+internal fun Int.toThreeCharHex(): String = "%03x".format(this)
 
 internal fun String.hexToBinaryList(): List<String> {
     val strList = this.chunked(2)

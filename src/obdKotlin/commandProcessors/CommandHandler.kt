@@ -2,6 +2,8 @@ package obdKotlin.commandProcessors
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import obdKotlin.WorkMode
 import obdKotlin.commands.CommandContainer
 import obdKotlin.utils.CommandUtil
@@ -9,7 +11,7 @@ import obdKotlin.utils.FrameGenerator
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-class CommandHandler() : BaseCommandHandler() {
+class CommandHandler : BaseCommandHandler() {
 
     private val commandQueue = ConcurrentLinkedQueue<CommandContainer>()
 
@@ -19,71 +21,91 @@ class CommandHandler() : BaseCommandHandler() {
 
     override val commandAllowed = AtomicBoolean(true)
 
+    private val handlerMutex = Mutex()
+
     override fun isQueueEmpty(): Boolean = commandQueue.isEmpty()
 
     override fun getCurrentCommand(): String? = commandQueue.peek()?.command
 
     override suspend fun sendNextCommand(lastCommandFailed: Boolean?) {
-        if (commandQueue.isNotEmpty()) {
-            lastCommandFailed?.let {
-                if (it) {
-                    removeCommand(commandQueue.poll().command)
+        handlerMutex.withLock {
+            if (commandQueue.isNotEmpty()) {
+                lastCommandFailed?.let {
+                    if (it) {
+                        removeCommand(commandQueue.poll().command)
+                    } else {
+                        commandQueue.remove()
+                    }
+                }
+            }
+
+            // Конкарент кью не поможет,
+            // так как я сохраняю в константу значение из очереди, а сразу после этого оно вполне может измениться
+
+            if (commandQueue.isNotEmpty()) {
+                val command = commandQueue.peek()
+                command.delay?.let {
+                    if (it != 0L) {
+                        delay(it)
+                    }
+                }
+                val handledCommand =
+                    if (extended.get()) FrameGenerator.generateFrame(command.command) else command.command
+                if (handledCommand.length <= 16) {
+                    commandFlow.emit(CommandUtil.formatPid(handledCommand))
                 } else {
-                    commandQueue.remove()
+                    handledCommand.chunked(16).forEach {
+                        delay(100)
+                        commandFlow.emit(CommandUtil.formatPid(it))
+                    }
                 }
-            }
-        }
-        if (commandQueue.isNotEmpty()) {
-            val command = commandQueue.peek()
-            command.delay?.let {
-                delay(it)
-            }
-            val handledCommand = if (extended.get()) FrameGenerator.generateFrame(command.command) else command.command
-            if (handledCommand.length <= 16) {
-                commandFlow.emit(CommandUtil.formatPid(handledCommand))
-            } else {
-                handledCommand.chunked(16).forEach {
-                    delay(100)
-                    commandFlow.emit(CommandUtil.formatPid(it))
-                }
-            }
-            command.delay?.let {
-                if (commandQueue.isNotEmpty()) {
+                command.delay?.let {
                     commandQueue.add(CommandContainer(command.command, it))
+                    // положить саму комманду в конец очереди если нужен повтор, фреймы положить в начало очереди
+                    // возможно поставить поле в коммандах по типу форматтед, чтоб не форматировали фрейм дважды,
+                    // можно мапить комманды в др класс
                 }
-
-                // положить саму комманду в конец очереди если нужен повтор, фреймы положить в начало очереди
-                // возможно поставить поле в коммандах по типу форматтед, чтоб не форматировали фрейм дважды,
-                // можно мапить комманды в др класс
             }
         }
     }
 
-    /**
-     * Put null for delete all commands in queue
-     */
-    override fun removeCommand(command: String?) {
-        command?.let { command ->
-            commandQueue.removeIf { it.command.contains(command, true) }
-            return@removeCommand
-        }
-        commandQueue.clear()
-        commandAllowed.set(true)
-    }
-
-    override suspend fun receiveCommand(command: String, delay: Long?, workMode: WorkMode) {
-        commandQueue.add(CommandContainer(command, delay))
-        if (workMode == WorkMode.COMMANDS && commandAllowed.get()) {
-            commandAllowed.set(false)
-            sendNextCommand()
+    override suspend fun removeCommand(command: String) {
+        handlerMutex.withLock {
+            commandQueue.removeIf { it.command == command }
+            commandAllowed.set(commandQueue.isEmpty())
         }
     }
 
-    override suspend fun receiveCommand(commands: List<CommandContainer>, workMode: WorkMode) {
-        TODO("Not yet implemented")
+    override suspend fun clearCommandsQueue() {
+        handlerMutex.withLock {
+            commandQueue.clear()
+            commandAllowed.set(true)
+        }
     }
 
-    override fun receiveMultiCommand(commands: List<String>) {
-        TODO("Not yet implemented")
+    override suspend fun receiveCommands(command: String, delay: Long?, workMode: WorkMode) {
+        handlerMutex.withLock {
+            if (commandQueue.find { it.command == command } == null) {
+                commandQueue.add(CommandContainer(command, delay))
+                if (workMode == WorkMode.COMMANDS && commandAllowed.get()) {
+                    commandAllowed.set(false)
+                    sendNextCommand()
+                }
+            }
+        }
+    }
+
+    override suspend fun receiveCommands(commands: List<String>, delay: Long?, workMode: WorkMode) {
+        handlerMutex.withLock {
+            commands.forEach { command ->
+                if (commandQueue.find { it.command == command } == null) {
+                    commandQueue.add(CommandContainer(command, delay))
+                }
+            }
+            if (workMode == WorkMode.COMMANDS && commandAllowed.get()) {
+                commandAllowed.set(false)
+                sendNextCommand()
+            }
+        }
     }
 }

@@ -11,166 +11,314 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
 
     override suspend fun handleBytes(bytesBody: ByteArray, pid: Int?): EncodingState {
         val encodedMessage: Message? = when (pid) {
+            0x00 -> {
+                decodeSupportedPids(pid, bytesBody, 1)
+            }
+
             0x01 -> {
-                decodeStatusSinceDTCCleared(bytesBody)
+                decodeStatusSinceDTCCleared(pid, bytesBody)
             }
 
             0x5B -> {
-                decodeHybridBatteryLife(bytesBody)
+                decodeHybridBatteryLife(pid, bytesBody)
+            }
+
+            0x03 -> {
+                decodeFuelSystemStatus(pid, bytesBody)
             }
 
             0x04 -> {
-                decodeEngineLoad(bytesBody)
+                decodeEngineLoad(pid, bytesBody)
             }
 
             0x05 -> {
-                decodeCoolantTemperature(bytesBody)
+                decodeCoolantTemperature(pid, bytesBody)
             }
 
             0x13 -> {
-                oxygenSensorsPresents(bytesBody)
+                oxygenSensorsPresents(pid, bytesBody)
             }
 
             0x0D -> {
-                decodeCarSpeed(bytesBody)
+                decodeCarSpeed(pid, bytesBody)
             }
 
             0x10 -> {
-                decodeMafFlowRate(bytesBody) // gram/sec
+                decodeMafFlowRate(pid, bytesBody) // gram/sec
             }
 
             0x11 -> {
-                decodeThrottlePosition(bytesBody)
+                decodeThrottlePosition(pid, bytesBody)
+            }
+
+            0x14 -> {
+                decodeOxygenSensorData(pid, bytesBody, 1)
+            }
+
+            0x15 -> {
+                decodeOxygenSensorData(pid, bytesBody, 2)
+            }
+
+            0x16 -> {
+                decodeOxygenSensorData(pid, bytesBody, 3)
+            }
+
+            0x17 -> {
+                decodeOxygenSensorData(pid, bytesBody, 4)
+            }
+
+            0x18 -> {
+                decodeOxygenSensorData(pid, bytesBody, 5)
+            }
+
+            0x19 -> {
+                decodeOxygenSensorData(pid, bytesBody, 6)
+            }
+
+            0x1A -> {
+                decodeOxygenSensorData(pid, bytesBody, 7)
+            }
+
+            0x1B -> {
+                decodeOxygenSensorData(pid, bytesBody, 8)
+            }
+
+            0x0B -> {
+                decodeManifoldPressure(pid, bytesBody)
             }
 
             0x0E -> {
-                decodeTimingAdvance(bytesBody) // Опережение зажигания
+                decodeTimingAdvance(pid, bytesBody) // Опережение зажигания
             }
 
             0x33 -> {
-                decodeBarometricPressure(bytesBody)
+                decodeBarometricPressure(pid, bytesBody)
             }
 
             0x5A -> {
-                decodeAcceleratorPosition(bytesBody)
+                decodeAcceleratorPosition(pid, bytesBody)
             }
 
             0x0C -> {
-                decodeRPM(bytesBody)
+                decodeRPM(pid, bytesBody)
+            }
+
+            0x0F -> {
+                decodeIntakeAirTemperature(pid, bytesBody)
             }
 
             0x23 -> {
-                decodeFuelPressureDI(bytesBody)
+                decodeFuelPressureDI(pid, bytesBody)
+            }
+
+            0x24 -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 1)
+            }
+
+            0x25 -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 2)
+            }
+
+            0x26 -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 3)
+            }
+
+            0x27 -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 4)
+            }
+
+            0x28 -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 5)
+            }
+
+            0x29 -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 6)
+            }
+
+            0x2A -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 7)
+            }
+
+            0x2B -> {
+                decodeAirRatioByOxySensorVoltage(pid, bytesBody, 8)
+            }
+
+            0x2C -> {
+                decodeCommandedEgr(pid, bytesBody)
+            }
+
+            0x2D -> {
+                decodeEgrError(pid, bytesBody)
+            }
+
+            0x2F -> {
+                decodeFuelTankLevel(pid, bytesBody)
+            }
+
+            0x30 -> {
+                decodeWarmUpsAfterCodesCleared(pid, bytesBody)
+            }
+
+            0x31 -> {
+                decodeDistanceAfterCodesCleared(pid, bytesBody)
+            }
+
+            0x34 -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 1)
+            }
+
+            0x35 -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 2)
+            }
+
+            0x36 -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 3)
+            }
+
+            0x37 -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 4)
+            }
+
+            0x38 -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 5)
+            }
+
+            0x39 -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 6)
+            }
+
+            0x3A -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 7)
+            }
+
+            0x3B -> {
+                decodeAirRatioByOxySensorCurrent(pid, bytesBody, 8)
+            }
+
+            0x42 -> {
+                decodeEcuVoltage(pid, bytesBody)
+            }
+
+            0x43 -> {
+                decodeAbsLoad(pid, bytesBody)
+            }
+
+            0x45 -> {
+                decodeRelativeThrottlePosition(pid, bytesBody)
             }
 
             0x46 -> {
-                decodeAmbientAirTemperature(bytesBody)
-            }
-
-            0x00 -> {
-                decodeSupportedPids(bytesBody, 1)
+                decodeAmbientAirTemperature(pid, bytesBody)
             }
 
             0x20 -> {
-                decodeSupportedPids(bytesBody, 2)
+                decodeSupportedPids(pid, bytesBody, 2)
             }
 
             0x40 -> {
-                decodeSupportedPids(bytesBody, 3)
+                decodeSupportedPids(pid, bytesBody, 3)
             }
 
             0x60 -> {
-                decodeSupportedPids(bytesBody, 4)
+                decodeSupportedPids(pid, bytesBody, 4)
             }
 
             0x80 -> {
-                decodeSupportedPids(bytesBody, 5)
+                decodeSupportedPids(pid, bytesBody, 5)
             }
 
             0xA0 -> {
-                decodeSupportedPids(bytesBody, 6)
+                decodeSupportedPids(pid, bytesBody, 6)
             }
 
             0xC0 -> {
-                decodeSupportedPids(bytesBody, 7)
+                decodeSupportedPids(pid, bytesBody, 7)
             }
 
             0x1F -> {
-                decodeEngineRunTime(bytesBody)
+                decodeEngineRunTime(pid, bytesBody)
             }
 
             0x06 -> {
-                decodeFuelTrim(bytesBody, 1, true)
+                decodeFuelTrim(pid, bytesBody, 1, true)
             }
 
             0x07 -> {
-                decodeFuelTrim(bytesBody, 1, false)
+                decodeFuelTrim(pid, bytesBody, 1, false)
             }
 
             0x08 -> {
-                decodeFuelTrim(bytesBody, 2, true)
+                decodeFuelTrim(pid, bytesBody, 2, true)
             }
 
             0x09 -> {
-                decodeFuelTrim(bytesBody, 2, false)
+                decodeFuelTrim(pid, bytesBody, 2, false)
             }
 
             0x3C -> {
-                decodeCatalystTemperature(bytesBody, 1, 1)
+                decodeCatalystTemperature(pid, bytesBody, 1, 1)
             }
 
             0x3D -> {
-                decodeCatalystTemperature(bytesBody, 2, 1)
+                decodeCatalystTemperature(pid, bytesBody, 2, 1)
             }
 
             0x3E -> {
-                decodeCatalystTemperature(bytesBody, 1, 2)
+                decodeCatalystTemperature(pid, bytesBody, 1, 2)
             }
 
             0x3F -> {
-                decodeCatalystTemperature(bytesBody, 2, 2)
+                decodeCatalystTemperature(pid, bytesBody, 2, 2)
             }
 
             0x0A -> {
-                decodeGaugeFuelPressure(bytesBody)
+                decodeGaugeFuelPressure(pid, bytesBody)
             }
 
             0x44 -> {
-                decodeAirFuelRatio(bytesBody)
+                decodeAirFuelRatio(pid, bytesBody)
             }
 
             0x63 -> {
-                decodeTorqueInNM(bytesBody)
+                decodeTorqueInNM(pid, bytesBody)
             }
 
             0x64 -> {
-                decodeEngineTorqueGraph(bytesBody)
+                decodeEngineTorqueGraph(pid, bytesBody)
             }
 
             0x5C -> {
-                decodeOilTemperature(bytesBody)
+                decodeOilTemperature(pid, bytesBody)
             }
 
             0x5D -> {
-                decodeFuelInjectionTiming(bytesBody)
+                decodeFuelInjectionTiming(pid, bytesBody)
             }
+
             0x5E -> {
-                decodeFuelRate(bytesBody) //  L/h
+                decodeFuelRate(pid, bytesBody) //  L/h
             }
+
             0xA2 -> {
-                decodeCylinderFuelRate(bytesBody)
+                decodeCylinderFuelRate(pid, bytesBody)
             }
+
             0xA4 -> {
-                decodeTransmissionActualGear(bytesBody)
+                decodeTransmissionActualGear(pid, bytesBody)
             }
+
             0xA6 -> {
-                decodeOdometer(bytesBody)
+                decodeOdometer(pid, bytesBody)
             }
+
             0x67 -> {
-                decodeTwoSensorsCoolantTemperature(bytesBody)
+                decodeTwoSensorsCoolantTemperature(pid, bytesBody)
             }
+
             else -> {
-                eventFlow.emit(Message.UnknownAnswer(bytesBody.decodeToString(), bytesBody))
+                pid?.let {
+                    eventFlow.emit(Message.UnknownAnswer(it, bytesBody))
+                }
                 null
             }
         }
@@ -181,107 +329,246 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
         return EncodingState.Unsuccessful(bytesBody.decodeToString())
     }
 
-    private fun decodeTransmissionActualGear(bytesBody: ByteArray): Message {
+    private fun decodeRelativeThrottlePosition(pid: Int, bytesBody: ByteArray): Message {
+        val position = 2.55f * bytesBody.decodeToString(0, 2).toInt(16)
+        return Message.RelativeThrottlePosition(pid, position)
+    }
+
+    private fun decodeDistanceAfterCodesCleared(pid: Int, bytesBody: ByteArray): Message {
+        val distance = 256 * bytesBody.decodeToString(0, 2).toInt(16) -
+            bytesBody.decodeToString(2, 4).toInt(16)
+        return Message.DistanceAfterCodesCleared(pid, distance)
+    }
+
+    private fun decodeEgrError(pid: Int, bytesBody: ByteArray): Message {
+        val error = 100 / 128f *
+            bytesBody.decodeToString(0, 2).toInt(16) - 100
+        return Message.EgrError(pid, error)
+    }
+
+    private fun decodeCommandedEgr(pid: Int, bytesBody: ByteArray): Message {
+        val commandedEgr = 2.55f *
+            bytesBody.decodeToString(0, 2).toInt(16)
+        return Message.CommandedEgr(pid, commandedEgr)
+    }
+
+    private fun decodeFuelTankLevel(pid: Int, bytesBody: ByteArray): Message {
+        val level = 2.55f *
+            bytesBody.decodeToString(0, 2).toInt(16)
+        return Message.FuelLevel(pid, level)
+    }
+
+    private fun decodeWarmUpsAfterCodesCleared(pid: Int, bytesBody: ByteArray): Message {
+        return Message.WarmUpsSinceCodesCleaned(
+            pid,
+            bytesBody.decodeToString(0, 2).toInt(16)
+        )
+    }
+
+    private fun decodeAbsLoad(pid: Int, bytesBody: ByteArray): Message {
+        val load = 2.55f * (
+            256 * bytesBody.decodeToString(0, 2).toInt(16) +
+                bytesBody.decodeToString(2, 4).toInt(16)
+            )
+        return Message.AbsoluteLoad(pid, load)
+    }
+
+    private fun decodeEcuVoltage(pid: Int, bytesBody: ByteArray): Message {
+        val voltage = (
+            256 * bytesBody.decodeToString(0, 2).toInt(16) +
+                bytesBody.decodeToString(2, 4).toInt(16)
+            ) / 1000
+        return Message.EcuVoltage(pid, voltage)
+    }
+
+    private fun decodeAirRatioByOxySensorCurrent(
+        pid: Int,
+        bytesBody: ByteArray,
+        sensor: Int
+    ): Message {
+        val ratio = 2f / 65536 * (
+            256 * bytesBody.decodeToString(0, 2).toInt(16) +
+                bytesBody.decodeToString(2, 4).toInt(16)
+            )
+        val ma = (
+            256 * bytesBody.decodeToString(4, 6).toInt(16) +
+                bytesBody.decodeToString(6, 8).toInt(16)
+            ) / 256 - 128
+        return Message.OxygenSensorDataByCurrent(pid, sensor, ratio, ma)
+    }
+
+    private fun decodeAirRatioByOxySensorVoltage(
+        pid: Int,
+        bytesBody: ByteArray,
+        sensor: Int
+    ): Message {
+        val ratio = 2f / 65536 * (
+            256 * bytesBody.decodeToString(0, 2).toInt(16) +
+                bytesBody.decodeToString(2, 4).toInt(16)
+            )
+        val voltage = 8f / 65536 * (
+            256 * bytesBody.decodeToString(4, 6).toInt(16) +
+                bytesBody.decodeToString(6, 8).toInt(16)
+            )
+        return Message.OxygenSensorDataByVoltage(pid, sensor, ratio, voltage)
+    }
+
+    private fun decodeIntakeAirTemperature(pid: Int, bytesBody: ByteArray): Message {
+        return Message.IntakeAirTemperature(
+            pid,
+            bytesBody.decodeToString(0, 2).toInt(16) - 40
+        )
+    }
+
+    private fun decodeManifoldPressure(pid: Int, bytesBody: ByteArray): Message {
+        return Message.ManifoldPressure(
+            pid,
+            bytesBody.decodeToString(0, 2).toInt(16) * 3
+        )
+    }
+
+    private fun decodeFuelSystemStatus(pid: Int, bytesBody: ByteArray): Message {
+        val state = when (bytesBody.decodeToString(0, 2).toInt(16)) {
+            0x00 -> {
+                Message.FuelSysStatus.FuelSystemState.MOTOR_OFF
+            }
+
+            0x01 -> {
+                Message.FuelSysStatus.FuelSystemState.OPEN_LOOP_DUE_LOW_ENG_TEMP
+            }
+
+            0x02 -> {
+                Message.FuelSysStatus.FuelSystemState.CLOSED_LOOP_DUE_OXY_SENSOR
+            }
+
+            0x04 -> {
+                Message.FuelSysStatus.FuelSystemState.OPEN_LOOP_DUE_LOAD_OR_DECELERATION
+            }
+
+            0x08 -> {
+                Message.FuelSysStatus.FuelSystemState.OPEN_LOOP_DUE_FAILTURE
+            }
+
+            0x16 -> {
+                Message.FuelSysStatus.FuelSystemState.CLOSED_LOOP_DUE_FEEDBACK_SYS_FAULT
+            }
+
+            else -> {
+                null
+            }
+        }
+        return Message.FuelSysStatus(pid, state)
+    }
+
+    private fun decodeOxygenSensorData(pid: Int, bytesBody: ByteArray, oSensorNumber: Int): Message {
+        val first = bytesBody.decodeToString(0, 2).toInt(16)
+        val second = bytesBody.decodeToString(2, 4).toInt(16)
+        return Message.OxygenSensorData(pid, oSensorNumber, first / 200f, 0.28f * second - 100)
+    }
+
+    private fun decodeTransmissionActualGear(pid: Int, bytesBody: ByteArray): Message {
         // todo refact
         val isSupported = bytesBody.decodeToString(0, 2).toInt(16).toBinary()[6]
         val hex = bytesBody.decodeToString(4, 8)
         val gear = (256 * hex.toInt(16)) / 1000.0
-        return Message.ActualGear(gear)
-    }
-    private fun decodeOdometer(bytesBody: ByteArray): Message {
-        val kilometers = (bytesBody.decodeToString().toUInt(16) / 10u).toFloat()
-        return Message.OdometerData(kilometers)
+        return Message.ActualGear(pid, gear)
     }
 
-    private fun decodeCylinderFuelRate(bytesBody: ByteArray): Message {
+    private fun decodeOdometer(pid: Int, bytesBody: ByteArray): Message {
+        val kilometers = (bytesBody.decodeToString().toUInt(16) / 10u).toFloat()
+        return Message.OdometerData(pid, kilometers)
+    }
+
+    private fun decodeCylinderFuelRate(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val rate = (256 * hex.toInt(16)) / 32
-        return Message.CylinderFuelRate(rate)
+        return Message.CylinderFuelRate(pid, rate)
     }
 
-    private fun decodeTwoSensorsCoolantTemperature(bytesBody: ByteArray): Message {
+    private fun decodeTwoSensorsCoolantTemperature(pid: Int, bytesBody: ByteArray): Message {
         val sourceInt = bytesBody.decodeToString(0, 2).toInt(16)
         val aSupported = (sourceInt and 1) == 1
         val bSupported = (sourceInt shr 1 and 1) == 1
         val coolant1 = bytesBody.decodeToString(2, 4).toInt(16) - 40
         val coolant2 = bytesBody.decodeToString(4, 6).toInt(16) - 40
-        val map = mapOf<Int, Boolean>(Pair(coolant1, aSupported), Pair(coolant2, bSupported))
-        return Message.TwoSensorsCoolantData(map)
+        val map = mapOf(Pair(coolant1, aSupported), Pair(coolant2, bSupported))
+        return Message.TwoSensorsCoolantData(pid, map)
     }
 
-    private fun decodeFuelRate(bytesBody: ByteArray): Message {
+    private fun decodeFuelRate(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val fuelRate = (256 * hex.toInt(16)) / 20
-        return Message.FuelRate(fuelRate)
+        return Message.FuelRate(pid, fuelRate)
     }
 
-    private fun decodeFuelInjectionTiming(bytesBody: ByteArray): Message {
+    private fun decodeFuelInjectionTiming(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val timing = (256 * hex.toInt(16)) / 128 - 210
-        return Message.FuelInjectionTiming(timing)
+        return Message.FuelInjectionTiming(pid, timing)
     }
 
-    private fun decodeOilTemperature(bytesBody: ByteArray): Message {
+    private fun decodeOilTemperature(pid: Int, bytesBody: ByteArray): Message {
         val oilTemperature = bytesBody.decodeToString(0, 2).toInt(16) - 40
-        return Message.OilTemperature(oilTemperature)
+        return Message.OilTemperature(pid, oilTemperature)
     }
 
-    private fun decodeHybridBatteryLife(bytesBody: ByteArray): Message {
+    private fun decodeHybridBatteryLife(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 2)
         val remainingPercent = 100 / 255.00 * hex.toInt(16)
-        return Message.HybridBatteryLife(remainingPercent)
+        return Message.HybridBatteryLife(pid, remainingPercent)
     }
 
-    private fun decodeEngineTorqueGraph(bytesBody: ByteArray): Message {
+    private fun decodeEngineTorqueGraph(pid: Int, bytesBody: ByteArray): Message {
         // ? Should check
         val idlePoint = bytesBody.decodeToString(0, 2).toInt(16) - 125
         val pointB = bytesBody.decodeToString(2, 4).toInt(16) - 125
         val pointC = bytesBody.decodeToString(4, 6).toInt(16) - 125
         val pointD = bytesBody.decodeToString(6, 8).toInt(16) - 125
         val pointE = bytesBody.decodeToString(6, 8).toInt(16) - 125
-        return Message.EngineTorqueDataPercent(idlePoint, pointB, pointC, pointD, pointE)
+        return Message.EngineTorqueDataPercent(pid, idlePoint, pointB, pointC, pointD, pointE)
     }
 
-    private fun decodeTorqueInNM(bytesBody: ByteArray): Message {
+    private fun decodeTorqueInNM(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val torque = 256 * hex.toInt(16)
-        return Message.TorqueNM(torque)
+        return Message.TorqueNM(pid, torque)
     }
 
-    private fun decodeAirFuelRatio(bytesBody: ByteArray): Message {
+    private fun decodeAirFuelRatio(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val airFuelRatio = 2 / 65536.0 * (256 * hex.toInt(16))
-        return Message.AirToFuelRatio(airFuelRatio)
+        return Message.AirToFuelRatio(pid, airFuelRatio)
     }
 
-    private fun decodeGaugeFuelPressure(bytesBody: ByteArray): Message {
+    private fun decodeGaugeFuelPressure(pid: Int, bytesBody: ByteArray): Message {
         val pressure = bytesBody.decodeToString(0, 2).toInt(16) * 3
-        return Message.GaugeFuelPressure(pressure)
+        return Message.GaugeFuelPressure(pid, pressure)
     }
 
-    private fun decodeFuelTrim(bytesBody: ByteArray, bank: Int, shortTerm: Boolean): Message {
+    private fun decodeFuelTrim(pid: Int, bytesBody: ByteArray, bank: Int, shortTerm: Boolean): Message {
         val hex = bytesBody.decodeToString(0, 2)
         val trim: Float = hex.toInt(16) / 1.28f - 100
-        return Message.FuelTrim(trim, bank, shortTerm)
+        return Message.FuelTrim(pid, trim, bank, shortTerm)
     }
 
     private fun decodeCatalystTemperature(
+        pid: Int,
         bytesBody: ByteArray,
         bank: Int,
         sensor: Int
     ): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val catalystTemperature = (256 * hex.toInt(16)) / 10 - 40
-        return Message.CatalystTemperature(catalystTemperature, bank, sensor)
+        return Message.CatalystTemperature(pid, catalystTemperature, bank, sensor)
     }
 
-    private fun decodeEngineRunTime(bytesBody: ByteArray): Message {
+    private fun decodeEngineRunTime(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val runTime = 256 * hex.toInt(16)
-        return Message.EngineRunTime(runTime)
+        return Message.EngineRunTime(pid, runTime)
     }
 
-    private fun oxygenSensorsPresents(bytesBody: ByteArray): Message {
+    private fun oxygenSensorsPresents(pid: Int, bytesBody: ByteArray): Message {
         // todo refact
         val binary = bytesBody.decodeToString(0, 2).toInt(16).toBinary(8).toCharArray()
         val map = mutableMapOf<Pair<Int, Int>, Boolean>()
@@ -292,64 +579,64 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
                 map.put(Pair(2, i), binary[i].toBoolean())
             }
         }
-        return Message.OxygenSensorsPresents(map)
+        return Message.OxygenSensorsPresents(pid, map)
     }
 
-    private fun decodeMafFlowRate(bytesBody: ByteArray): Message {
+    private fun decodeMafFlowRate(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val rate: Float = (256 * hex.toInt(16)) / 100.00f
-        return Message.MafAirFlowRate(rate)
+        return Message.MafAirFlowRate(pid, rate)
     }
 
-    private fun decodeAmbientAirTemperature(bytesBody: ByteArray): Message {
+    private fun decodeAmbientAirTemperature(pid: Int, bytesBody: ByteArray): Message {
         val ambientTemperature = bytesBody.decodeToString(0, 2)
             .toInt(16) - 40
-        return Message.AmbientAirTemperature(ambientTemperature)
+        return Message.AmbientAirTemperature(pid, ambientTemperature)
     }
 
-    private fun decodeFuelPressureDI(bytesBody: ByteArray): Message {
+    private fun decodeFuelPressureDI(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
-        val pressure = 0.079 * (256 * hex.toInt(16))
-        return Message.FuelPressureDI(pressure)
+        val pressure = 10.0 * (256 * hex.toInt(16))
+        return Message.FuelPressureDI(pid, pressure)
     }
 
-    private fun decodeRPM(bytesBody: ByteArray): Message {
+    private fun decodeRPM(pid: Int, bytesBody: ByteArray): Message {
         val hex = bytesBody.decodeToString(0, 4)
         val rpm = (256 * hex.toInt(16)) / 4
-        return Message.RPM(rpm)
+        return Message.RPM(pid, rpm)
     }
 
-    private fun decodeAcceleratorPosition(bytesBody: ByteArray): Message {
+    private fun decodeAcceleratorPosition(pid: Int, bytesBody: ByteArray): Message {
         val acceleratorPosition = bytesBody.decodeToString(0, 2).toInt(16) * 2.55f
-        return Message.AcceleratorPosition(acceleratorPosition)
+        return Message.AcceleratorPosition(pid, acceleratorPosition)
     }
 
-    private fun decodeBarometricPressure(bytesBody: ByteArray): Message {
+    private fun decodeBarometricPressure(pid: Int, bytesBody: ByteArray): Message {
         val atmPress = bytesBody.decodeToString(0, 2).toInt(16)
-        return Message.BarometricPressure(atmPress)
+        return Message.BarometricPressure(pid, atmPress)
     }
 
-    private fun decodeTimingAdvance(bytesBody: ByteArray): Message {
+    private fun decodeTimingAdvance(pid: Int, bytesBody: ByteArray): Message {
         val advance = bytesBody.decodeToString(0, 2).toInt(16) / 2 - 64
-        return Message.TimingAdvance(advance)
+        return Message.TimingAdvance(pid, advance)
     }
 
-    private fun decodeThrottlePosition(bytesBody: ByteArray): Message {
+    private fun decodeThrottlePosition(pid: Int, bytesBody: ByteArray): Message {
         val position = bytesBody.decodeToString(0, 2).toInt(16) / 2.55f
-        return Message.ThrottlePosition(position)
+        return Message.ThrottlePosition(pid, position)
     }
 
-    private fun decodeCarSpeed(bytesBody: ByteArray): Message {
+    private fun decodeCarSpeed(pid: Int, bytesBody: ByteArray): Message {
         val speed = bytesBody.decodeToString(0, 2).toInt(16)
-        return Message.VehicleSpeed(speed)
+        return Message.VehicleSpeed(pid, speed)
     }
 
-    private fun decodeEngineLoad(bytesBody: ByteArray): Message {
+    private fun decodeEngineLoad(pid: Int, bytesBody: ByteArray): Message {
         val load = bytesBody.decodeToString(0, 2).toInt(16) / 2.55f
-        return Message.EngineLoadMessage(load)
+        return Message.EngineLoad(pid, load)
     }
 
-    private fun decodeSupportedPids(dataBytes: ByteArray, part: Int): Message {
+    private fun decodeSupportedPids(pid: Int, dataBytes: ByteArray, part: Int): Message {
         val pidOffset = when (part) {
             1 -> 1
             2 -> 33
@@ -371,10 +658,10 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
             val isSupported = bit == 1U
             map[(i + pidOffset).toHex()] = isSupported
         }
-        return Message.SupportedCommands(map, pidOffset.toHex(), (pidOffset + 32).toHex())
+        return Message.SupportedCommands(pid, map, pidOffset.toHex(), (pidOffset + 32).toHex())
     }
 
-    private fun decodeStatusSinceDTCCleared(dataBytes: ByteArray): Message {
+    private fun decodeStatusSinceDTCCleared(pid: Int, dataBytes: ByteArray): Message {
         // todo refact
         val bitsOfAByte = dataBytes.first().toUByte().toBinary(8).toCharArray()
         val bitsOfBByte = dataBytes[1].toUByte().toBinary(8).toCharArray()
@@ -382,14 +669,15 @@ class CurrentDataEncoder(eventFlow: MutableSharedFlow<Message?>) : Encoder(event
         val numberOfErrors = dataBytes.copyOfRange(0, 6).toString().toUByte(2)
         val isSparkTestAvailable = bitsOfBByte[3].toBoolean()
         return Message.MonitorDTCsStatus(
+            pid,
             milIsOn,
             numberOfErrors,
             isSparkTestAvailable
         )
     }
 
-    private fun decodeCoolantTemperature(bytesBody: ByteArray): Message {
+    private fun decodeCoolantTemperature(pid: Int, bytesBody: ByteArray): Message {
         val temperature = bytesBody.decodeToString().toInt(16) - 40
-        return Message.TemperatureMessage(temperature)
+        return Message.CoolantTemperature(pid, temperature)
     }
 }

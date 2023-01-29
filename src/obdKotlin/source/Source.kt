@@ -3,6 +3,7 @@ package obdKotlin.source
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import obdKotlin.core.SystemEventListener
 
 abstract class Source {
 
@@ -15,9 +16,11 @@ abstract class Source {
         const val NULL_BYTE_VALUE: Byte = 0
     }
 
-    val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
+    internal val inputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
 
-    val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
+    internal val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
 
-    abstract suspend fun observeByteCommands(scope: CoroutineScope, error: (() -> Unit)?)
+    abstract suspend fun observeByteCommands(scope: CoroutineScope, error: ((SystemEventListener.SourceType) -> Unit)?)
+
+    abstract fun disconnect()
 }

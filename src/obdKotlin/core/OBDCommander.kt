@@ -1,22 +1,15 @@
 package obdKotlin.core
 
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import obdKotlin.WorkMode
 import obdKotlin.commandProcessors.BaseCommandHandler
-import obdKotlin.commands.CommandContainer
 import obdKotlin.commands.CommandRout
 import obdKotlin.decoders.Decoder
 import obdKotlin.decoders.EncodingState
@@ -25,7 +18,6 @@ import obdKotlin.encoders.SpecialEncoder
 import obdKotlin.exceptions.NoSourceProvidedException
 import obdKotlin.exceptions.WrongInitCommandException
 import obdKotlin.exceptions.WrongMessageTypeException
-import obdKotlin.messages.Message
 import obdKotlin.profiles.Profile
 import obdKotlin.protocol.BaseProtocolManager
 import obdKotlin.protocol.Protocol
@@ -35,28 +27,18 @@ import obdKotlin.utils.CommandUtil
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.jvm.Throws
 
-/**
- * Warm Start в билдер done
- * Билдер энкодеров по енаму
- * Выкидывать комманду из протокол менеджера только когда приходит ответ done
- * Включить поддержку повторяемых информационных АТ комманд
- * Посыллать ли null в в соокет с обработкой?
- * Что если пользователь из кан режима начнёт слать не кан комманды?
- * Подготовить к приёму > символа, по получению которого шлю след комманду done
- * Впиши строки выхода из кан режима
- */
 internal class OBDCommander(
     protocolManager: BaseProtocolManager,
     private val warmStarts: Boolean,
     private val atDecoder: Decoder,
     private val pinDecoder: SpecialEncoderHost,
     private val commandHandler: BaseCommandHandler,
-    private val eventListener: SystemEventListener?
-) : Commander(protocolManager) {
-
-    companion object {
-        private const val BUFFER_CAPACITY = 100
-    }
+    private val eventListener: SystemEventListener?,
+    enableRawData: Boolean
+) : Commander(
+    enableRawData,
+    protocolManager
+) {
 
     constructor(
         protoManager: BaseProtocolManager,
@@ -65,14 +47,16 @@ internal class OBDCommander(
         pinDecoderEntity: SpecialEncoderHost,
         commandHandler: BaseCommandHandler,
         eventListener: SystemEventListener?,
-        source: Source
+        source: Source,
+        enableRawData: Boolean
     ) : this(
         protoManager,
         warmStarts,
         atDecoder,
         pinDecoderEntity,
         commandHandler,
-        eventListener
+        eventListener,
+        enableRawData
     ) {
         this.source = source
         observeInput()
@@ -82,18 +66,27 @@ internal class OBDCommander(
     private val commanderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     init {
         observeCommands()
-        observeSource()
+        bindDecodersFlows()
+    }
+
+    private fun bindDecodersFlows() {
+        commanderScope.apply {
+            launch {
+                atDecoder.eventFlow.onEach {
+                    _encodedDataMessages.emit(it)
+                }.collect()
+            }
+            launch {
+                pinDecoder.eventFlow.onEach {
+                    _encodedDataMessages.emit(it)
+                }.collect()
+            }
+        }
     }
 
     private val extendedMode = AtomicBoolean(false)
 
     private var source: Source? = null
-    var workMode = WorkMode.IDLE
-        private set
-
-    override val encodedDataMessages: SharedFlow<Message?> = merge(atDecoder.eventFlow, pinDecoder.eventFlow)
-        .buffer(BUFFER_CAPACITY)
-        .shareIn(commanderScope, SharingStarted.Eagerly)
 
     private fun observeCommands() {
         commanderScope.launch {
@@ -109,7 +102,7 @@ internal class OBDCommander(
             commandHandler.commandFlow.map {
                 it.toByteArray(Charsets.US_ASCII)
             }.onEach {
-                source?.inputByteFlow?.emit(it)
+                source?.outputByteFlow?.emit(it)
             }.collect()
         }
     }
@@ -119,6 +112,9 @@ internal class OBDCommander(
             commanderScope.launch {
                 it.inputByteFlow.onEach {
                     if (it.isNotEmpty()) {
+                        if (enableRawData) {
+                            _rawDataFlow.emit(it.decodeToString())
+                        }
                         manageInputData(it)
                     }
                 }.collect()
@@ -127,7 +123,6 @@ internal class OBDCommander(
     }
 
     private suspend fun manageInputData(bytes: ByteArray) {
-        Log.d("@@@", "MANAGE INPUT " + bytes.decodeToString())
         when (workMode) {
             WorkMode.IDLE -> {
                 doOnIdle(bytes)
@@ -236,11 +231,8 @@ internal class OBDCommander(
     }
 
     private fun observeSource() {
-        Log.d("@@@", "Invoke")
         source?.let { source ->
-            Log.d("@@@", "Source eys")
             commanderScope.launch {
-                Log.d("@@@", "obs")
                 val onError = if (eventListener != null) eventListener::onSourceError else null
                 source.observeByteCommands(commanderScope, onError)
             }
@@ -290,6 +282,14 @@ internal class OBDCommander(
         }
     }
 
+    override fun sendRawCommand(command: String) {
+        if (enableRawData) {
+            commanderScope.launch {
+                source?.outputByteFlow?.emit(command.toByteArray(Charsets.US_ASCII))
+            }
+        }
+    }
+
     override fun start(
         protocol: Protocol?,
         extra: List<String>?,
@@ -297,9 +297,12 @@ internal class OBDCommander(
         extendedMode: Boolean
     ) {
         checkSource()
-        onReset()
         commanderScope.launch {
-            switchExtended(extendedMode)
+            onReset()
+            switchExtended(
+                extendedMode,
+                specialEncoder == null
+            )
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
             }
@@ -312,17 +315,15 @@ internal class OBDCommander(
 
     override suspend fun resetSettings() {
         checkSource()
-        onReset()
         commanderScope.launch {
+            onReset()
             protocolManager.resetSession(warmStarts)
         }
     }
 
-    private fun onReset() {
-        Log.d("@@@", "on reset")
-        commandHandler.removeCommand()
+    private suspend fun onReset() {
+        commandHandler.clearCommandsQueue()
         protocolManager.resetStates()
-        switchExtended(false)
         changeModeAndInvokeModeCallBack(WorkMode.IDLE)
     }
 
@@ -333,9 +334,9 @@ internal class OBDCommander(
         extendedMode: Boolean
     ) {
         checkSource()
-        onReset()
         commanderScope.launch {
-            switchExtended(extendedMode)
+            onReset()
+            switchExtended(extendedMode, true)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
             }
@@ -354,9 +355,9 @@ internal class OBDCommander(
         extendedMode: Boolean
     ) {
         checkSource()
-        onReset()
         commanderScope.launch {
-            switchExtended(extendedMode)
+            onReset()
+            switchExtended(extendedMode, specialEncoder == null)
             specialEncoder?.let {
                 pinDecoder.setSpecialEncoder(specialEncoder)
             }
@@ -375,20 +376,23 @@ internal class OBDCommander(
         checkSource()
         commanderScope.launch {
             val checkedCommand = CommandUtil.checkPid(command)
-            commandHandler.receiveCommand(checkedCommand, repeatTime, workMode)
+            commandHandler.receiveCommands(checkedCommand, repeatTime, workMode)
         }
     }
 
-    override fun sendCommands(commands: List<CommandContainer>) {
+    override fun sendCommands(commands: List<String>, repeatTime: Long?) {
         checkSource()
         commanderScope.launch {
-            val handledCommands = commands.map { CommandContainer(CommandUtil.formatPid(it.command), it.delay) }
-            commandHandler.receiveCommand(handledCommands, workMode)
+            commandHandler.receiveCommands(commands, repeatTime, workMode)
         }
     }
 
     override fun stop() {
         commanderScope.coroutineContext.cancelChildren()
+    }
+
+    override fun disconnect() {
+        source?.disconnect()
     }
 
     @Throws(NoSourceProvidedException::class)
@@ -405,25 +409,35 @@ internal class OBDCommander(
         observeSource()
     }
 
-    private fun switchExtended(mode: Boolean) {
+    private fun switchExtended(
+        mode: Boolean,
+        unbindSpecialEncoder: Boolean
+    ) {
         extendedMode.set(mode)
         commandHandler.extended.set(mode)
         pinDecoder.extended.set(mode)
         eventListener?.onSwitchMode(mode)
+        if (unbindSpecialEncoder) {
+            pinDecoder.setSpecialEncoder(null)
+        }
     }
 
     /**
      * Remove command from queue by pid
      */
     override fun removeRepeatedCommand(command: String) {
-        commandHandler.removeCommand(command)
+        commanderScope.launch {
+            commandHandler.removeCommand(command)
+        }
     }
 
     /**
      * Remove all commands from queue
      */
-    override fun removeRepeatedCommands() {
-        commandHandler.removeCommand()
+    override fun removeAllCommands() {
+        commanderScope.launch {
+            commandHandler.clearCommandsQueue()
+        }
     }
 
     /**
@@ -435,7 +449,10 @@ internal class OBDCommander(
     private fun onNewSource(resetStates: Boolean) {
         commanderScope.coroutineContext.cancelChildren()
         if (resetStates) {
-            onReset()
+            commanderScope.launch {
+                pinDecoder.setSpecialEncoder(null)
+                onReset()
+            }
         }
     }
 
@@ -446,16 +463,18 @@ internal class OBDCommander(
      */
     override fun startWithProfile(profile: Profile) {
         checkSource()
-        onReset()
         commanderScope.launch {
+            onReset()
             if (profile.encoder != null) {
-                switchExtended(true)
+                switchExtended(
+                    mode = true,
+                    unbindSpecialEncoder = false
+                )
             }
-            profile.notAT?.let {
-                commandHandler.receiveCommand(
-                    it.map { command ->
-                        CommandContainer(command)
-                    },
+            profile.commands?.let {
+                commandHandler.receiveCommands(
+                    it,
+                    null,
                     workMode
                 )
             }

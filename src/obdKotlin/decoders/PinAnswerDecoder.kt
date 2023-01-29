@@ -44,7 +44,7 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
                 return EncodingState.Unsuccessful("?")
             }
 
-            decoded.contains("SEARCHING...", true) && decoded.length > 12 -> {
+            decoded.contains("SEARCHING", true) && decoded.length > 12 -> {
                 startIndex = 12
                 // 12 bytes == SEARCHING...
             }
@@ -97,9 +97,12 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
             Commands.PidMod.VEHICLE_INFO_REQUEST -> TODO()
             Commands.PidMod.DELETED_ERRORS -> TODO()
             Commands.PidMod.CHECK_ON_CAN -> {
-                if (extended.get() && specialEncoder != null) {
-                    specialEncoder!!.handleBytes(message)
-                } else EncodingState.Unsuccessful(decoded)
+                specialEncoder?.let {
+                    if (extended.get()) {
+                        it.handleBytes(message)
+                    } else EncodingState.Unsuccessful(decoded)
+                }
+                EncodingState.Unsuccessful(decoded)
             }
         }
     }
@@ -113,9 +116,9 @@ internal class PinAnswerDecoder() : Decoder(), SpecialEncoderHost {
         return mode ?: Commands.PidMod.CHECK_ON_CAN
     }
 
-    override fun setSpecialEncoder(encoder: SpecialEncoder) {
+    override fun setSpecialEncoder(encoder: SpecialEncoder?) {
         extended.set(true)
-        encoder.bindMessagesFlow(eventFlow)
+        encoder?.bindMessagesFlow(eventFlow)
         specialEncoder = encoder
     }
 }

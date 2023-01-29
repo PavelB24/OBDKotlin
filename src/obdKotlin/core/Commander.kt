@@ -1,9 +1,10 @@
 package obdKotlin.core
 
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import obdKotlin.WorkMode
 import obdKotlin.commandProcessors.BaseCommandHandler
 import obdKotlin.commandProcessors.CommandHandler
-import obdKotlin.commands.CommandContainer
 import obdKotlin.decoders.AtDecoder
 import obdKotlin.decoders.Decoder
 import obdKotlin.decoders.PinAnswerDecoder
@@ -17,11 +18,21 @@ import obdKotlin.protocol.Protocol
 import obdKotlin.protocol.ProtocolManager
 import obdKotlin.source.Source
 
-abstract class Commander(protoManager: BaseProtocolManager) {
+abstract class Commander(
+    protected val enableRawData: Boolean,
+    protoManager: BaseProtocolManager
+) {
 
-    abstract val encodedDataMessages: SharedFlow<Message?>
+    protected val _encodedDataMessages: MutableSharedFlow<Message?> = MutableSharedFlow()
+    val encodedDataMessages: SharedFlow<Message?> = _encodedDataMessages
 
-    internal val protocolManager: BaseProtocolManager = protoManager
+    protected val _rawDataFlow: MutableSharedFlow<String> = MutableSharedFlow()
+    val rawDataFlow: SharedFlow<String> = _rawDataFlow
+
+    protected val protocolManager: BaseProtocolManager = protoManager
+
+    var workMode = WorkMode.IDLE
+        protected set
 
     /**
      *  Header Address for ATSH receiver Address for ATCRA
@@ -54,16 +65,21 @@ abstract class Commander(protoManager: BaseProtocolManager) {
         command: String
     )
 
+    abstract fun sendRawCommand(command: String)
+
     abstract suspend fun resetSettings()
 
     abstract fun sendCommand(command: String, repeatTime: Long? = null)
     abstract fun startWithProfile(profile: Profile)
     abstract fun stop()
 
+    abstract fun disconnect()
+
     class Builder {
 
         private var source: Source? = null
         private var useWS: Boolean = false
+        private var enableRawData: Boolean = false
         private var protocolManager: BaseProtocolManager = ProtocolManager()
         private var atDecoderClass: Decoder = AtDecoder()
         private var pinDecoderClass: SpecialEncoderHost = PinAnswerDecoder()
@@ -113,18 +129,42 @@ abstract class Commander(protoManager: BaseProtocolManager) {
             return this
         }
 
+        fun enableRawData(): Builder {
+            enableRawData = true
+            return this
+        }
+
         fun build(): Commander {
             val commander = if (source != null) {
-                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler, eventListener, source!!)
+                OBDCommander(
+                    protocolManager,
+                    useWS,
+                    atDecoderClass,
+                    pinDecoderClass,
+                    commandHandler,
+                    eventListener,
+                    source!!,
+                    enableRawData
+                )
             } else {
-                OBDCommander(protocolManager, useWS, atDecoderClass, pinDecoderClass, commandHandler, eventListener)
+                OBDCommander(
+                    protocolManager,
+                    useWS,
+                    atDecoderClass,
+                    pinDecoderClass,
+                    commandHandler,
+                    eventListener,
+                    enableRawData
+                )
             }
             return commander
         }
     }
 
     abstract fun removeRepeatedCommand(command: String)
-    abstract fun removeRepeatedCommands()
-    abstract fun sendCommands(commands: List<CommandContainer>)
+
+    abstract fun removeAllCommands()
+
+    abstract fun sendCommands(commands: List<String>, repeatTime: Long? = null)
     abstract fun sendMultiCommand()
 }

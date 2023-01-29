@@ -8,7 +8,6 @@ import java.lang.StringBuilder
 
 object FrameGenerator {
 
-    @Synchronized
     fun generateFrame(command: String): String {
         val findInStandard = Commands.PidMod.values().find {
             it.hex == command.take(2)

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import obdKotlin.core.SystemEventListener
 import java.io.IOException
 import java.nio.ByteBuffer
 
@@ -14,7 +15,10 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
     private val input = socket.inputStream
     private val output = socket.outputStream
 
-    override suspend fun observeByteCommands(scope: CoroutineScope, error: (() -> Unit)?) {
+    override suspend fun observeByteCommands(
+        scope: CoroutineScope,
+        error: ((SystemEventListener.SourceType) -> Unit)?
+    ) {
         scope.launch {
             outputByteFlow.onEach {
                 sendToSource(it)
@@ -22,6 +26,14 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
         }
         scope.launch {
             readData(this, error)
+        }
+    }
+
+    override fun disconnect() {
+        try {
+            socket.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -35,7 +47,10 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
         }
     }
 
-    private suspend fun readData(job: CoroutineScope, error: (() -> Unit)?) {
+    private suspend fun readData(
+        job: CoroutineScope,
+        error: ((SystemEventListener.SourceType) -> Unit)?
+    ) {
         while (job.isActive) {
             val localBuffer: ByteBuffer = ByteBuffer.allocate(64)
             try {
@@ -52,8 +67,11 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
                 }
                 sendToCommander(localBuffer)
             } catch (e: IOException) {
-                error?.invoke()
+                error?.invoke(SystemEventListener.SourceType.BLUETOOTH)
                 e.printStackTrace()
+                try {
+                    socket.close()
+                } catch (ignore: Exception) { }
             }
         }
     }

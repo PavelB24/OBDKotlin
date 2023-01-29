@@ -87,7 +87,6 @@ internal object CommandUtil {
         }
     }
 
-    @Synchronized
     fun checkPid(trimmedCommand: String): String {
         return if (trimmedCommand.contains("I", true) ||
             trimmedCommand.contains("RV", true)
@@ -107,14 +106,10 @@ internal object CommandUtil {
             }
         } else trimmedCommand
     }
-
-    @Synchronized
     fun formatAT(command: String): String = "$AT_PREFIX$command\r"
 
-    @Synchronized
     fun formatPid(command: String): String = "$command\r"
 
-    @Synchronized
     fun filterExtraAndFormat(extra: List<String>, extendedMode: Boolean): List<String> {
         val filtered = extra.filter {
             when {

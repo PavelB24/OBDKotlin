@@ -2,7 +2,6 @@ package obdKotlin.commandProcessors
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import obdKotlin.WorkMode
-import obdKotlin.commands.CommandContainer
 import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class BaseCommandHandler() {
@@ -11,9 +10,11 @@ abstract class BaseCommandHandler() {
     abstract val commandAllowed: AtomicBoolean
 
     /**
-     * Remove specific command or remove all from queue to send, if id==null
+     * Remove specific command or remove all from queue to send, if command==null
      */
-    abstract fun removeCommand(command: String? = null)
+    abstract suspend fun removeCommand(command: String)
+
+    abstract suspend fun clearCommandsQueue()
 
     abstract val extended: AtomicBoolean
 
@@ -21,11 +22,9 @@ abstract class BaseCommandHandler() {
 
     abstract fun isQueueEmpty(): Boolean
 
-    abstract suspend fun receiveCommand(command: String, delay: Long?, workMode: WorkMode)
+    abstract suspend fun receiveCommands(command: String, delay: Long?, workMode: WorkMode)
 
-    abstract suspend fun receiveCommand(commands: List<CommandContainer>, workMode: WorkMode)
-
-    abstract fun receiveMultiCommand(commands: List<String>)
+    abstract suspend fun receiveCommands(commands: List<String>, delay: Long?, workMode: WorkMode)
 
     abstract fun getCurrentCommand(): String?
 }

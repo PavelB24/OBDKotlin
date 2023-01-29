@@ -8,7 +8,11 @@ interface SystemEventListener {
 
     fun onDecodeError(fail: FailOn?)
 
-    fun onSourceError()
+    fun onSourceError(source: SourceType)
 
     fun onSwitchMode(extendedMode: Boolean)
+
+    enum class SourceType {
+        BLUETOOTH, WIFI
+    }
 }
