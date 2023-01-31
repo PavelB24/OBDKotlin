@@ -1,5 +1,6 @@
 package obdKotlin.protocol
 
+import android.util.Log
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import obdKotlin.commands.Commands
@@ -71,6 +72,7 @@ internal class ProtocolManager : BaseProtocolManager() {
         userProtocol = protocol
         prepare(extra)
         val command = if (warmStart) Commands.AtCommands.WarmStart.command else Commands.AtCommands.ResetAll.command
+        Log.d("@@@", "START PROTO AUTO SEND $command")
         _obdCommandFlow.emit(command)
     }
 

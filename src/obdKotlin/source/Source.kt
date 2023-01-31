@@ -20,7 +20,11 @@ abstract class Source {
 
     internal val outputByteFlow: MutableSharedFlow<ByteArray> = MutableSharedFlow(REPLAY, BUFFER_CAPACITY, BufferOverflow.SUSPEND)
 
-    abstract suspend fun observeByteCommands(scope: CoroutineScope, error: ((SystemEventListener.SourceType) -> Unit)?)
+    abstract suspend fun observeByteCommands(
+        scope: CoroutineScope,
+        error: ((SystemEventListener.SourceType) -> Unit)?,
+        connect: ((SystemEventListener.SourceType) -> Unit)?
+    )
 
     abstract fun disconnect()
 }

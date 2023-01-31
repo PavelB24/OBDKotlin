@@ -115,8 +115,9 @@ abstract class Commander(
             return this
         }
 
-        fun setEventListener(eventListener: SystemEventListener) {
+        fun setEventListener(eventListener: SystemEventListener): Builder {
             this.eventListener = eventListener
+            return this
         }
 
         fun useWarmStarts(): Builder {

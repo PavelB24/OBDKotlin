@@ -29,14 +29,18 @@ class WiFiSource(
 
     private val socket: SocketChannel = SocketChannel.open()
 
-    override suspend fun observeByteCommands(scope: CoroutineScope, error: ((SystemEventListener.SourceType) -> Unit)?) {
+    override suspend fun observeByteCommands(
+        scope: CoroutineScope,
+        error: ((SystemEventListener.SourceType) -> Unit)?,
+        connect: ((SystemEventListener.SourceType) -> Unit)?
+    ) {
         scope.launch {
             outputByteFlow.onEach {
                 sendToSource(it)
             }.collect()
         }
         scope.launch {
-            connect()
+            connect(error, connect)
             init(this, error)
         }
     }
@@ -81,6 +85,10 @@ class WiFiSource(
                 e.printStackTrace()
             }
         }
+        try {
+            selector.close()
+            socket.close()
+        } catch (ignored: Exception) {}
     }
 
     private suspend fun readFromSocket() {
@@ -110,13 +118,18 @@ class WiFiSource(
     }
 
     @Throws(IOException::class)
-    private fun connect() {
+    private fun connect(
+        error: ((SystemEventListener.SourceType) -> Unit)?,
+        connect: ((SystemEventListener.SourceType) -> Unit)?
+    ) {
         try {
             socket.configureBlocking(false)
             socket.register(selector, SelectionKey.OP_CONNECT or SelectionKey.OP_READ)
             socket.connect(address)
+            connect?.invoke(SystemEventListener.SourceType.WIFI)
         } catch (e: IOException) {
             e.printStackTrace()
+            error?.invoke(SystemEventListener.SourceType.WIFI)
         }
     }
 }

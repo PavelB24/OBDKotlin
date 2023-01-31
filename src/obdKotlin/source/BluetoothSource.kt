@@ -1,6 +1,7 @@
 package obdKotlin.source
 
 import android.bluetooth.BluetoothSocket
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -17,15 +18,35 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
 
     override suspend fun observeByteCommands(
         scope: CoroutineScope,
-        error: ((SystemEventListener.SourceType) -> Unit)?
+        error: ((SystemEventListener.SourceType) -> Unit)?,
+        connect: ((SystemEventListener.SourceType) -> Unit)?
     ) {
-        scope.launch {
-            outputByteFlow.onEach {
-                sendToSource(it)
-            }.collect()
+        if (connect(error, connect)) {
+            scope.launch {
+                outputByteFlow.onEach {
+                    Log.d("@@@", "SENDING--->>>  " + it.size.toString())
+                    sendToSource(it)
+                }.collect()
+            }
+            scope.launch {
+                readData(this, error)
+            }
         }
-        scope.launch {
-            readData(this, error)
+    }
+
+    private fun connect(
+        error: ((SystemEventListener.SourceType) -> Unit)?,
+        connect: ((SystemEventListener.SourceType) -> Unit)?
+    ): Boolean {
+        return try {
+            socket.connect()
+            connect?.invoke(SystemEventListener.SourceType.BLUETOOTH)
+            true
+        } catch (e: Exception) {
+            Log.d("@@@", e.stackTraceToString())
+            e.printStackTrace()
+            error?.invoke(SystemEventListener.SourceType.BLUETOOTH)
+            false
         }
     }
 
@@ -68,18 +89,16 @@ class BluetoothSource(private val socket: BluetoothSocket) : Source() {
                 sendToCommander(localBuffer)
             } catch (e: IOException) {
                 error?.invoke(SystemEventListener.SourceType.BLUETOOTH)
+                socket.use { }
+                Log.d("@@@", e.stackTraceToString())
                 e.printStackTrace()
-                try {
-                    socket.close()
-                } catch (ignore: Exception) { }
             }
         }
     }
 
     private suspend fun sendToCommander(buffer: ByteBuffer) {
         buffer.flip()
-        val array = buffer.array()
-        val filteredArray = array.filter {
+        val filteredArray = buffer.array().filter {
             it != SPACE_BYTE_VALUE && it != NULL_BYTE_VALUE && it != CR_BYTE_VALUE
         }.toByteArray()
         inputByteFlow.emit(filteredArray)

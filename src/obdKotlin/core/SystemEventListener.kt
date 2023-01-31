@@ -12,7 +12,9 @@ interface SystemEventListener {
 
     fun onSwitchMode(extendedMode: Boolean)
 
-    enum class SourceType {
+    fun onConnect(source: SourceType)
+
+    enum class SourceType() {
         BLUETOOTH, WIFI
     }
 }

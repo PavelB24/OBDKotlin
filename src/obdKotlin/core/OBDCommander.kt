@@ -1,5 +1,6 @@
 package obdKotlin.core
 
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -90,10 +91,12 @@ internal class OBDCommander(
 
     private fun observeCommands() {
         commanderScope.launch {
+            Log.d("@@@", "OBSERVE COMMANDS")
             protocolManager.obdCommandFlow
                 .map {
                     it.toByteArray(Charsets.US_ASCII)
                 }.onEach {
+                    Log.d("@@@", it.size.toString())
                     println(it.size)
                     source?.outputByteFlow?.emit(it)
                 }.collect()
@@ -110,7 +113,9 @@ internal class OBDCommander(
     private fun observeInput() {
         source?.let {
             commanderScope.launch {
+                Log.d("@@@", "OBS INPUT")
                 it.inputByteFlow.onEach {
+                    Log.d("@@@", "RECEIVE ->>>>> ${it.size}")
                     if (it.isNotEmpty()) {
                         if (enableRawData) {
                             _rawDataFlow.emit(it.decodeToString())
@@ -234,7 +239,8 @@ internal class OBDCommander(
         source?.let { source ->
             commanderScope.launch {
                 val onError = if (eventListener != null) eventListener::onSourceError else null
-                source.observeByteCommands(commanderScope, onError)
+                val connect = if (eventListener != null) eventListener::onConnect else null
+                source.observeByteCommands(commanderScope, onError, connect)
             }
         }
     }
@@ -407,6 +413,7 @@ internal class OBDCommander(
         this.source = source
         observeInput()
         observeSource()
+        observeCommands()
     }
 
     private fun switchExtended(
