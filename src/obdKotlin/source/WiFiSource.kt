@@ -1,5 +1,6 @@
 package obdKotlin.source
 
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -42,12 +43,12 @@ class WiFiSource(
         scope.launch {
             outputByteFlow.onEach {
                 if (socket.isOpen) {
-                    sendToSource(it.filter { it != 13.toByte() }.toByteArray())
+                    sendToSource(it)
                 } else {
                     delay(TIMEOUT)
                     if (!socket.isOpen) {
                         error?.invoke(SystemEventListener.SourceType.WIFI)
-                    } else sendToSource(it.filter { it != 13.toByte() }.toByteArray())
+                    } else sendToSource(it)
                 }
             }.collect()
         }
@@ -121,12 +122,14 @@ class WiFiSource(
             var bytes = 1
             while (dataBuffer.hasRemaining() && bytes > 0) {
                 try {
+                    Log.d("@@@", "WRITING ${dataBuffer.array().size}")
                     bytes = socket.write(dataBuffer)
                 } catch (e: Exception) {
                     if (socket.isConnected) {
                         socket.close()
                     }
                     e.printStackTrace()
+                    break
                 }
             }
         }

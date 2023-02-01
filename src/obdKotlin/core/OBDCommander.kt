@@ -410,10 +410,10 @@ internal class OBDCommander(
 
     override fun bindSource(source: Source, resetStates: Boolean) {
         onNewSource(resetStates)
+        observeCommands()
         this.source = source
         observeInput()
         observeSource()
-        observeCommands()
     }
 
     private fun switchExtended(
