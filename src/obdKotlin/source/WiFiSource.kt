@@ -1,6 +1,7 @@
 package obdKotlin.source
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
@@ -19,7 +20,7 @@ class WiFiSource(
 ) : Source() {
 
     companion object {
-        private const val TIMEOUT = 500L
+        private const val TIMEOUT = 2000L
         private const val RECEIVE_BUFFER_SIZE = 4098
     }
 
@@ -35,13 +36,20 @@ class WiFiSource(
         connect: ((SystemEventListener.SourceType) -> Unit)?
     ) {
         scope.launch {
-            outputByteFlow.onEach {
-                sendToSource(it)
-            }.collect()
-        }
-        scope.launch {
             connect(error, connect)
             init(this, error)
+        }
+        scope.launch {
+            outputByteFlow.onEach {
+                if (socket.isOpen) {
+                    sendToSource(it.filter { it != 13.toByte() }.toByteArray())
+                } else {
+                    delay(TIMEOUT)
+                    if (!socket.isOpen) {
+                        error?.invoke(SystemEventListener.SourceType.WIFI)
+                    } else sendToSource(it.filter { it != 13.toByte() }.toByteArray())
+                }
+            }.collect()
         }
     }
 
@@ -58,7 +66,7 @@ class WiFiSource(
         scope: CoroutineScope,
         error: ((SystemEventListener.SourceType) -> Unit)?
     ) {
-        while (scope.isActive) {
+        while (scope.isActive && socket.isConnected) {
             try {
                 selector.select(TIMEOUT)
                 val selectedKeys = selector.selectedKeys()
@@ -112,7 +120,14 @@ class WiFiSource(
             dataBuffer.flip()
             var bytes = 1
             while (dataBuffer.hasRemaining() && bytes > 0) {
-                bytes = socket.write(dataBuffer)
+                try {
+                    bytes = socket.write(dataBuffer)
+                } catch (e: Exception) {
+                    if (socket.isConnected) {
+                        socket.close()
+                    }
+                    e.printStackTrace()
+                }
             }
         }
     }
